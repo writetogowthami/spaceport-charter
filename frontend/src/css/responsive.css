@@ -1,0 +1,248 @@
+/* =====================================================
+   FOOTER
+   ===================================================== */
+
+footer {
+  padding: 25px 20px 35px;
+
+  text-align: center;
+  color: #92aab9;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+
+/* =====================================================
+   RESPONSIVE — TABLET
+   ===================================================== */
+
+@media (max-width: 1000px) {
+  .slot-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* =====================================================
+   RESPONSIVE — SMALL TABLET
+   ===================================================== */
+
+@media (max-width: 760px) {
+  .container {
+    padding: 28px 16px 45px;
+  }
+
+  .topbar-inner {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .two-column,
+  .fleet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-footer .btn-primary {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .ticket-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .confirmation {
+    padding: 24px;
+  }
+
+  .timeline-panel > .between {
+    flex-wrap: wrap;
+  }
+}
+
+/* =====================================================
+   RESPONSIVE — CUSTOM TIME / BOOKING MODE
+   ===================================================== */
+
+@media (max-width: 600px) {
+  .slots-panel > .between {
+    display: block;
+  }
+  .date-chip {
+    display: block;
+    margin: 8px 0 0;
+  }
+  .booking-mode-switch {
+    display: flex;
+    width: 100%;
+  }
+
+  .booking-mode-button {
+    flex: 1;
+    padding: 10px 12px;
+  }
+
+  .launch-mode-content {
+    min-height: 0;
+  }
+
+  .launch-mode-custom {
+    padding-top: 16px;
+  }
+
+  .custom-time-panel {
+    padding: 18px;
+  }
+
+  .custom-time-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-error-banner {
+    padding: 15px;
+    gap: 10px;
+  }
+}
+
+/* =====================================================
+   RESPONSIVE — MOBILE
+   ===================================================== */
+
+@media (max-width: 480px) {
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .brand strong {
+    font-size: 15px;
+    letter-spacing: 1px;
+  }
+
+  .brand small {
+    font-size: 12px;
+    letter-spacing: 1.2px;
+  }
+
+  .nav-tabs {
+    width: 100%;
+  }
+
+  .nav-tabs button {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .page-intro h1 {
+    font-size: 29px;
+    letter-spacing: -1px;
+  }
+
+  .panel {
+    padding: 17px;
+  }
+
+  .mission-summary {
+    padding: 18px;
+  }
+  .review-details {
+    gap: 18px;
+  }
+  .review-details dd {
+    font-size: 16px;
+  }
+  .review-details .review-window {
+    font-size: 16px;
+    white-space: nowrap;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .slot {
+    height: 59px;
+  }
+
+  .legend strong {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .stats {
+    gap: 9px;
+  }
+
+  .stat {
+    padding: 14px;
+  }
+
+  .stat strong {
+    font-size: 23px;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-grid {
+    gap: 15px;
+  }
+
+  .ticket-title strong {
+    font-size: 16px;
+  }
+
+  .confirmation-actions {
+    flex-direction: column;
+  }
+
+  .confirmation-actions button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   ACCESSIBILITY — REDUCED MOTION
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .slot,
+  .booking-mode-button {
+    transition: none;
+  }
+
+  .slot {
+    transform: none !important;
+  }
+}

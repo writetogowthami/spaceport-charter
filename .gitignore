@@ -1,0 +1,38 @@
+# Frontend dependencies and build outputs
+node_modules/
+dist/
+.vite/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Editor and OS files
+.DS_Store
+
+# Coverage and test artifacts
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+
+# Local logs
+*.log
+
+# SQLite backups and journals
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db.backup

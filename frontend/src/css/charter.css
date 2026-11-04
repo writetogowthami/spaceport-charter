@@ -1,0 +1,642 @@
+/* =====================================================
+   FLIGHT AVAILABILITY
+   ===================================================== */
+
+.hours {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 16px;
+  margin-bottom: 22px;
+
+  background: #f3f8f6;
+  border: 1px solid #d8e6e1;
+  border-radius: 9px;
+}
+
+.hours strong {
+  display: block;
+  color: #344c59;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.hours small {
+  display: block;
+  margin-top: 5px;
+  color: #647985;
+  font-size: 12px;
+}
+
+.hours b {
+  color: var(--teal);
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.clear-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-top: 17px;
+  padding: 16px;
+
+  background: #eaf7ef;
+  border: 1px solid #c5e7d4;
+  border-radius: 9px;
+  color: #205e48;
+}
+
+.clear-state > span {
+  width: 28px;
+  height: 28px;
+
+  display: grid;
+  place-items: center;
+
+  background: #d5eee0;
+  border-radius: 50%;
+  color: var(--teal);
+}
+
+.clear-state strong,
+.clear-state small {
+  display: block;
+  font-size: 13px;
+}
+
+.availability-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.availability-heading > strong {
+  color: var(--text);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.availability-date {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.clear-state strong {
+  color: #205e48;
+}
+
+.clear-state small {
+  color: #527765;
+  margin-top: 5px;
+}
+
+.blocked-list {
+  margin-top: 15px;
+}
+
+.blocked-window {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.blocked-window-time {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+.blocked-window-separator {
+  color: #80919b;
+  padding: 0 2px;
+}
+.blocked-window-time small {
+  font-size: 12px;
+  color: #647985;
+  font-weight: 700;
+}
+
+.blocked-window-status {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.empty-state {
+  padding: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* =====================================================
+   LAUNCH WINDOW PANEL
+   ===================================================== */
+
+.slots-panel {
+  margin-top: 16px;
+}
+
+.slots-panel > .between {
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.slots-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.slots-panel .date-chip {
+  margin-left: auto;
+  color: var(--action);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =====================================================
+   QUICK SELECTION / CUSTOM TIME SWITCH
+   ===================================================== */
+
+.booking-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 5px;
+  margin: 18px 0 6px;
+
+  background: #f0f4f3;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.booking-mode-button {
+  border: 0;
+  border-radius: 999px;
+
+  padding: 10px 18px;
+
+  background: transparent;
+  color: #536b76;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.booking-mode-button:hover:not(.active) {
+  background: #e0ece8;
+  color: var(--text);
+}
+
+.booking-mode-button.active {
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(8, 127, 120, 0.12);
+}
+
+.booking-mode-button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* =====================================================
+   LAUNCH MODE CONTENT
+   ===================================================== */
+
+.launch-mode-content {
+  margin-top: 14px;
+}
+
+.schedule-message {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f3f6f6;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+.unavailable-starts {
+  margin: 16px 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.unavailable-starts summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.unavailable-starts summary:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.unavailable-starts p {
+  max-width: 720px;
+  margin: 8px 0;
+}
+.unavailable-starts ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.period-empty {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.schedule-toggle {
+  margin-top: 4px;
+}
+
+.launch-mode-content.custom {
+  min-height: 0;
+}
+
+/* Quick selection grows naturally with the full schedule. */
+
+.launch-mode-scroll {
+  max-height: 620px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 8px 12px 0;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.launch-mode-scroll:focus-within {
+  scroll-behavior: auto;
+}
+
+/* Custom time occupies same height */
+
+.launch-mode-custom {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  padding-top: 12px;
+}
+
+.launch-mode-custom .custom-time-panel {
+  width: 100%;
+  margin-top: 0;
+}
+
+/* Mission summary stays in same position */
+
+.slots-panel .mission-summary {
+  margin-top: 16px;
+}
+
+/* =====================================================
+   LAUNCH SLOT LEGEND
+   ===================================================== */
+
+.legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+
+  margin: 21px 0 18px;
+
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend strong {
+  margin-left: auto;
+  color: var(--teal);
+  font-size: 13px;
+}
+
+/* Exact visual match to slot states */
+
+.legend .available-dot,
+.legend .selected-dot,
+.legend .unavailable-dot,
+.legend .buffer-dot {
+  width: 9px;
+  height: 9px;
+}
+
+.legend .available-dot {
+  background: var(--available-dot);
+}
+
+.legend .selected-dot {
+  background: var(--selected-bg);
+}
+
+.legend .unavailable-dot {
+  background: var(--unavailable-dot);
+}
+
+/* =====================================================
+   LAUNCH SLOT GRID
+   ===================================================== */
+
+.slot-section {
+  margin-bottom: 17px;
+}
+
+.slot-group-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+
+  border-bottom: 1px solid var(--line);
+}
+
+.slot-group-title strong {
+  font-size: 14px;
+}
+
+.slot-group-title span {
+  color: #647985;
+  font-size: 12px;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.slot {
+  height: 61px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  border: 1px solid var(--available-border);
+  border-radius: 9px;
+
+  background: var(--available-bg);
+  color: var(--available-text);
+
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.slot strong {
+  font-size: 14px;
+}
+
+.slot small {
+  color: #37745b;
+  font-size: 12px;
+}
+
+/* AVAILABLE */
+
+.slot.available,
+.slot:not(:disabled):not(.selected) {
+  background: var(--available-bg);
+  border: 1px solid var(--available-border);
+  color: var(--available-text);
+  opacity: 1;
+}
+
+.slot.available strong,
+.slot:not(:disabled):not(.selected) strong {
+  color: var(--available-text);
+}
+
+.slot.available small,
+.slot:not(:disabled):not(.selected) small {
+  color: #37745b;
+}
+
+.slot.available:hover:not(:disabled),
+.slot:not(:disabled):not(.selected):hover {
+  background: #d8eee2;
+  border-color: var(--available-dot);
+  box-shadow: 0 3px 9px rgba(32, 94, 72, 0.09);
+  transform: translateY(-1px);
+}
+
+/* SELECTED */
+
+.slot.selected,
+.slot.selected:hover,
+.slot.selected:focus-visible {
+  background: var(--selected-bg);
+  border: 2px solid var(--selected-border);
+  color: var(--selected-text);
+  opacity: 1;
+
+  box-shadow:
+    0 0 0 3px rgba(223, 111, 22, 0.16),
+    0 3px 8px rgba(185, 80, 11, 0.16);
+
+  transform: none;
+}
+
+.slot.selected strong,
+.slot.selected small {
+  color: #ffffff;
+}
+
+/* UNAVAILABLE */
+
+.slot.unavailable,
+.slot:disabled {
+  background: var(--unavailable-bg);
+  border: 1px solid var(--unavailable-border);
+  color: var(--unavailable-text);
+  opacity: 1;
+
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.slot.unavailable strong,
+.slot.unavailable small,
+.slot:disabled strong,
+.slot:disabled small {
+  color: var(--unavailable-text);
+}
+
+.slot:not(:disabled):focus-visible {
+  outline: 3px solid #773100;
+  outline-offset: 3px;
+}
+
+/* Launch availability help */
+
+.launch-availability-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+}
+
+.launch-availability-info > strong {
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.launch-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.launch-info-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+
+  border: 1px solid #b7cbc6;
+  border-radius: 50%;
+
+  background: #f3f7f6;
+  color: #536b76;
+
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  font-style: normal;
+
+  cursor: help;
+}
+
+.launch-info-button:hover,
+.launch-info-button:focus-visible {
+  background: #e3f1ed;
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.launch-info-button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.launch-info-tooltip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  right: 0;
+
+  width: min(320px, 80vw);
+  padding: 13px 15px;
+
+  background: #243c47;
+  color: #ffffff;
+
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(18, 41, 48, 0.16);
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.launch-info-wrapper:hover .launch-info-tooltip,
+.launch-info-wrapper:focus-within .launch-info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 600px) {
+  .launch-availability-info {
+    margin-left: 0;
+  }
+
+  .launch-availability-info > strong {
+    white-space: normal;
+  }
+}
+
+/* Mission summary — preserve the original layout */
+
+.review-details .review-window .time-range-hours {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.review-details .review-window .time-range-zone {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Keep launch legend and availability count visible while scrolling */
+
+.launch-mode-scroll > .legend {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  margin: 0 0 18px;
+  padding: 14px 12px;
+
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 4px 10px rgba(35, 55, 68, 0.04);
+}
+
+.launch-mode-scroll > .legend .launch-availability-info {
+  margin-left: auto;
+}
+
+@media (max-width: 600px) {
+  .launch-mode-scroll > .legend {
+    gap: 10px 16px;
+    padding: 12px 8px;
+  }
+
+  .launch-mode-scroll > .legend .launch-availability-info {
+    width: 100%;
+    margin-left: 0;
+  }
+}

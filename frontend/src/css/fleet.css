@@ -1,0 +1,932 @@
+/* =====================================================
+   FLEET MANAGER — KPI CARDS
+   ===================================================== */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.stat {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+  min-width: 0;
+  padding: 19px;
+
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+
+  box-shadow: var(--shadow);
+}
+
+.stat span {
+  display: block;
+
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.stat strong {
+  display: block;
+  margin: 11px 0 7px;
+
+  color: var(--teal);
+  font-size: 28px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-page .page-intro .eyebrow {
+  font-size: 13px;
+  letter-spacing: 1.4px;
+}
+
+.utilization-note {
+  margin: -16px 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.fleet-status,
+.timeline-day-status {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.stat small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* =====================================================
+   FLEET MANAGER — FILTERS
+   ===================================================== */
+
+.fleet-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.fleet-title h2 {
+  color: var(--text);
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  margin: 0 0 5px;
+}
+
+.fleet-title p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+
+  padding: 14px;
+
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+
+  box-shadow: var(--shadow);
+}
+
+.filters label {
+  min-width: 0;
+}
+
+.filters label > span {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+}
+
+.filters input,
+.filters select {
+  height: 46px;
+  font-size: 14px;
+}
+
+.filters option {
+  background: #fff;
+  color: var(--text);
+}
+
+.filter-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin: 12px 0 15px;
+
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.filter-footer button {
+  border: 0;
+  background: transparent;
+
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* =====================================================
+   FLEET MANAGER — SPACECRAFT CARDS
+   ===================================================== */
+
+.fleet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 15px;
+}
+
+.ship-card {
+  container: booking-card / inline-size;
+  background: #ffffff;
+  border-color: var(--line);
+}
+
+.ship-card h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.ship-card-title {
+  min-width: 0;
+}
+
+.ship-card > .between {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.count-pill {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.booking-list {
+  margin-top: 18px;
+}
+
+.fleet-list-toggle {
+  margin-top: 12px;
+  min-height: 44px;
+}
+
+.booking-row:last-child {
+  border-bottom: 0;
+}
+
+.booking-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 16px;
+
+  padding: 17px 0;
+  border-bottom: 1px solid #e5edeb;
+
+  font-size: 14px;
+}
+
+.booking-pilot {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.booking-identity {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-identity strong,
+.booking-identity small,
+.booking-schedule strong,
+.booking-schedule time {
+  display: block;
+}
+
+.booking-identity strong {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.booking-identity small {
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.booking-schedule time {
+  margin-top: 5px;
+}
+
+.booking-identity small,
+.booking-schedule time {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.booking-schedule {
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.booking-schedule strong {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@container booking-card (max-width: 380px) {
+  .booking-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .booking-schedule {
+    text-align: left;
+  }
+}
+
+.empty-ship {
+  min-height: 88px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.empty-ship span {
+  color: var(--teal);
+  font-size: 23px;
+}
+
+.empty-ship strong {
+  color: #344c59;
+  font-size: 14px;
+}
+
+.empty-ship small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* =====================================================
+   DAILY MISSION TIMELINE
+   ===================================================== */
+
+.timeline-panel {
+  margin-top: 18px;
+  margin-bottom: 18px;
+}
+
+.fleet-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-context {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.timeline-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.timeline-heading svg {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  padding: 7px;
+  border: 1px solid #c3e3d9;
+  border-radius: 9px;
+  background: #e2f3ee;
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.timeline-heading h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.timeline-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.timeline-controls {
+  display: flex;
+  gap: 7px;
+}
+
+.timeline-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+
+  background: #ffffff;
+  border: 1px solid #cbd9dc;
+  border-radius: 7px;
+
+  color: var(--text);
+}
+
+.timeline-controls button:hover:not(:disabled) {
+  background: #e9f5f1;
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.timeline-controls input {
+  width: 145px;
+  height: 40px;
+  border-color: #9fbfba;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.timeline-scroll {
+  overflow-x: auto;
+}
+
+.timeline-inner {
+  min-width: 690px;
+}
+
+.timeline-axis,
+.timeline-row {
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.timeline-axis > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.timeline-axis > div {
+  display: flex;
+  justify-content: space-between;
+
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-row > strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.track {
+  position: relative;
+  height: 31px;
+
+  border: 1px solid #ceddd9;
+  border-radius: 6px;
+
+  background-color: #edf3f2;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(12.5% - 1px),
+    rgba(120, 151, 148, 0.18) calc(12.5% - 1px),
+    rgba(120, 151, 148, 0.18) 12.5%
+  );
+
+  overflow: hidden;
+}
+
+.mission-bar,
+.buffer-bar {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  min-width: 0;
+}
+
+.mission-bar {
+  background: var(--teal);
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.buffer-bar {
+  background: var(--buffer);
+  z-index: 1;
+}
+
+.timeline-legend {
+  margin-bottom: 0;
+  color: #526a77;
+}
+
+/* Timeline legend: distinct from launch slot legend */
+
+.timeline-legend .reserved-dot {
+  background: var(--teal);
+}
+
+.timeline-legend .buffer-dot {
+  background: var(--buffer);
+}
+
+.timeline-legend .track-dot {
+  background: #cbdad6;
+}
+
+/* =====================================================
+   DAILY MISSION TIMELINE — VISUAL REFINEMENT
+   ===================================================== */
+
+.timeline-panel {
+  margin-top: 18px;
+  margin-bottom: 22px;
+  padding: 24px;
+
+  background: #ffffff;
+  border: 1px solid #dce7e4;
+  border-radius: 16px;
+
+  box-shadow: 0 4px 18px rgba(26, 55, 59, 0.035);
+}
+
+/* Heading and date controls */
+
+.timeline-panel > .between {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.timeline-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.timeline-heading h2 {
+  margin: 0 0 5px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+
+.timeline-heading p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-controls button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+
+  border: 1px solid #d8e4e2;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--text);
+
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.timeline-controls button:hover {
+  background: #eff7f5;
+  border-color: var(--teal);
+}
+
+.timeline-controls input {
+  width: 155px;
+  height: 42px;
+  padding: 0 12px;
+
+  border: 1px solid #cbded9;
+  border-radius: 9px;
+
+  color: var(--teal);
+  background: #ffffff;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* Status and legend */
+
+.timeline-day-status {
+  margin: 14px 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.timeline-context {
+  margin: 12px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Scrollable chart area */
+
+.timeline-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #c3d8d3 transparent;
+}
+
+.timeline-inner {
+  min-width: 820px;
+}
+
+/* One consistent column system for axis and rows */
+
+.timeline-axis,
+.timeline-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: center;
+}
+
+.timeline-axis {
+  margin-bottom: 12px;
+}
+
+.timeline-axis > span {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.timeline-hours {
+  position: relative;
+  height: 22px;
+  width: 100%;
+}
+
+.timeline-hours span {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  color: var(--muted);
+}
+
+.timeline-hours span:first-child {
+  transform: none;
+}
+
+.timeline-hours span:last-child {
+  transform: translateX(-100%);
+}
+
+/* Spacecraft rows */
+
+.timeline-row {
+  min-height: 47px;
+  margin-bottom: 6px;
+}
+
+.timeline-row > strong {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+/* The track represents the full 06:00–22:00 day */
+
+.timeline-row .track {
+  position: relative;
+  height: 34px;
+
+  border: 1px solid #d9e5e1;
+  border-radius: 7px;
+
+  background-color: #f1f6f4;
+
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(12.5% - 1px),
+    rgba(105, 145, 136, 0.16) calc(12.5% - 1px),
+    rgba(105, 145, 136, 0.16) 12.5%
+  );
+
+  overflow: hidden;
+}
+
+/* Reserved missions */
+
+.timeline-row .mission-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+
+  background: #00857c;
+  border-radius: 4px;
+
+  z-index: 2;
+  cursor: pointer;
+  transition:
+    filter 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.timeline-row .mission-bar:hover {
+  filter: brightness(0.9);
+}
+
+.timeline-row .mission-bar:focus-visible {
+  outline: 2px solid #173f4b;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+/* Refueling buffers */
+
+.timeline-row .buffer-bar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+
+  background: #d99a22;
+  border-radius: 2px;
+
+  z-index: 1;
+}
+
+/* Legend */
+
+.timeline-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+
+  margin-top: 18px;
+  margin-bottom: 0;
+
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.timeline-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.timeline-legend .reserved-dot {
+  background: #00857c;
+}
+
+.timeline-legend .buffer-dot {
+  background: #d99a22;
+}
+
+.timeline-legend .track-dot {
+  background: #dce8e4;
+}
+
+/* =====================================================
+     RESPONSIVE TIMELINE
+     ===================================================== */
+
+@media (max-width: 768px) {
+  .timeline-panel {
+    padding: 18px;
+  }
+
+  .timeline-panel > .between {
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .timeline-controls {
+    justify-content: flex-start;
+  }
+
+  .timeline-inner {
+    min-width: 780px;
+  }
+
+  .timeline-axis,
+  .timeline-row {
+    grid-template-columns: 140px minmax(0, 1fr);
+    column-gap: 12px;
+  }
+
+  .timeline-scroll {
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (max-width: 480px) {
+  .timeline-panel {
+    padding: 15px;
+  }
+
+  .timeline-heading h2 {
+    font-size: 18px;
+  }
+
+  .timeline-heading p {
+    font-size: 12px;
+  }
+
+  .timeline-controls input {
+    width: 145px;
+  }
+
+  .timeline-inner {
+    min-width: 760px;
+  }
+
+  .timeline-day-status {
+    font-size: 12px;
+  }
+}
+
+/* Timeline mission interaction */
+
+.timeline-row .mission-bar {
+  display: block;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  background: var(--teal);
+  cursor: pointer;
+}
+
+.timeline-row .mission-bar:hover {
+  filter: brightness(0.92);
+}
+
+.timeline-row .mission-bar:focus-visible {
+  outline: 2px solid #173f4b;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+/* Mission detail panel */
+
+.timeline-mission-details {
+  margin-top: 18px;
+  padding: 18px 20px;
+
+  background: #f5faf8;
+  border: 1px solid #cfe3dc;
+  border-radius: 11px;
+}
+
+.timeline-mission-details-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding-bottom: 13px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #dce9e4;
+}
+
+.timeline-mission-details-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.timeline-detail-label {
+  color: #637c83;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.timeline-mission-details-heading strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.timeline-detail-close {
+  display: grid;
+  place-items: center;
+
+  width: 30px;
+  height: 30px;
+  padding: 0;
+
+  border: 1px solid #d6e4df;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #536b76;
+
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.timeline-detail-close:hover {
+  background: #e7f2ed;
+  color: var(--text);
+}
+
+.timeline-mission-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.timeline-mission-details-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timeline-mission-details-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-mission-details-grid strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .timeline-mission-details {
+    padding: 15px;
+  }
+
+  .timeline-mission-details-grid {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+}

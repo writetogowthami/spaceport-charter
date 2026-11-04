@@ -1,0 +1,440 @@
+/* =====================================================
+   CUSTOM MISSION TIME
+   ===================================================== */
+
+.custom-time-panel {
+  padding: 24px;
+
+  background: #f7faf9;
+  border: 1px solid #dce8e4;
+  border-radius: 12px;
+}
+
+.custom-time-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  margin-bottom: 10px;
+}
+
+.custom-time-heading strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.custom-time-heading span {
+  color: var(--teal);
+  font-size: 12px;
+}
+
+.custom-time-description {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 22px;
+}
+
+.custom-time-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.custom-time-fields .field {
+  margin-bottom: 0;
+}
+
+.custom-time-fields input {
+  height: 46px;
+  padding: 0 14px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-format-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Custom time validation: distinct neutral, valid and error states */
+.custom-time-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 15px 16px;
+  border: 1px solid #dbe4e8;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.custom-feedback-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.custom-feedback-copy {
+  min-width: 0;
+}
+.custom-feedback-copy strong {
+  display: block;
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.custom-feedback-copy p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.custom-time-feedback.neutral {
+  background: #f1f5f6;
+  border-color: #dce5e8;
+  color: #526a77;
+}
+
+.custom-time-feedback.valid {
+  background: #eef8f1;
+  border-color: #b6dfc7;
+  color: #205e48;
+}
+
+.custom-time-feedback.invalid {
+  background: #fff3f3;
+  border-color: #efb8be;
+  color: #9b2732;
+}
+
+.custom-time-fields input[aria-invalid="true"] {
+  border-color: #dc7e88;
+}
+
+.custom-time-fields input[aria-invalid="true"]:focus {
+  border-color: #b4232f;
+  box-shadow: 0 0 0 3px rgba(180, 35, 47, 0.11);
+}
+
+/* =====================================================
+   MISSION REVIEW
+   ===================================================== */
+
+.mission-summary {
+  margin-top: 25px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.review-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.review-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+.review-status {
+  font-size: 13px;
+  font-weight: 600;
+}
+.review-status.available {
+  color: var(--success);
+}
+.review-status.incomplete {
+  color: var(--muted);
+}
+.review-status.invalid {
+  color: var(--error-text);
+}
+.review-status.unavailable {
+  color: var(--unavailable-text);
+}
+.review-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+.review-details > div {
+  min-width: 0;
+}
+.review-details dt {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+.review-details dd {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.review-details .review-window {
+  font-size: 22px;
+}
+.review-details .review-placeholder {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+.review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.review-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.review-footer .btn-confirm {
+  min-width: 210px;
+}
+.ticket .field-label {
+  display: block;
+  color: #526a77;
+  font-size: 12px;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+  font-weight: 800;
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+
+.btn-primary {
+  border: 0;
+  border-radius: 24px;
+  padding: 13px 23px;
+
+  background: var(--teal);
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+
+  box-shadow: 0 3px 9px rgba(8, 127, 120, 0.12);
+}
+
+.btn-confirm {
+  background: var(--action);
+  box-shadow: 0 2px 6px rgba(185, 80, 11, 0.16);
+}
+
+.btn-confirm:hover:not(:disabled) {
+  background: var(--action-hover);
+  box-shadow: 0 3px 8px rgba(185, 80, 11, 0.2);
+}
+
+.btn-confirm:focus-visible {
+  outline-color: var(--action);
+  box-shadow: 0 0 0 4px var(--action-focus);
+}
+
+.btn-primary:hover:not(:disabled):not(.btn-confirm) {
+  background: var(--teal-hover);
+  box-shadow: 0 5px 12px rgba(8, 127, 120, 0.18);
+}
+
+.btn-primary:disabled {
+  background: #e3e9e9;
+  color: #647984;
+  box-shadow: none;
+}
+
+.btn-outline {
+  background: #ffffff;
+  border: 1px solid #b4d4cb;
+  border-radius: 24px;
+
+  padding: 11px 17px;
+
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #eaf6f2;
+  border-color: var(--teal);
+}
+
+.btn-outline:disabled {
+  background: #f4f7f6;
+  border-color: #dce7e3;
+  color: #788d96;
+  opacity: 1;
+}
+
+/* =====================================================
+   ERRORS
+   ===================================================== */
+
+.error-inline,
+.global-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 12px 15px;
+
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-left: 4px solid var(--error);
+  border-radius: 9px;
+
+  color: var(--error-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ship-recovery {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ship-recovery span {
+  flex: 1 1 220px;
+}
+.ship-load-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.error-inline::before,
+.global-error::before {
+  content: "!";
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 2px solid var(--error);
+  border-radius: 50%;
+  color: var(--error);
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.global-error {
+  max-width: 1072px;
+  margin: 14px auto;
+}
+
+.booking-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+
+  margin-top: 22px;
+  padding: 18px 20px;
+
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-left: 4px solid var(--error);
+  border-radius: 10px;
+
+  color: var(--error-text);
+}
+
+.booking-error-banner:focus {
+  outline: 3px solid rgba(180, 35, 47, 0.2);
+  outline-offset: 3px;
+}
+
+.booking-error-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  width: 26px;
+  height: 26px;
+
+  background: #ffffff;
+  border: 2px solid var(--error);
+  border-radius: 50%;
+
+  color: var(--error);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.booking-error-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.booking-error-content strong {
+  display: block;
+  margin: 2px 0 7px;
+
+  color: var(--error-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.booking-error-content p {
+  margin: 0;
+  color: var(--error-text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.booking-error-close {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+
+  color: var(--error);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.booking-error-close:hover {
+  color: var(--error-text);
+}
+
+.booking-error-close:focus-visible {
+  outline: 2px solid var(--error);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
