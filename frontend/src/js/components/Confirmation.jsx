@@ -92,7 +92,7 @@ export default function Confirmation({ booking, ship, onAgain, onFleet }) {
 
         <div className="confirmation-pass-footer">
           <span>{duration}-minute mission</span>
-          <span>30-minute refueling buffer between missions</span>
+          <span>{ship?.refuelMinutes ?? 30}-minute refueling buffer between missions</span>
         </div>
       </div>
 

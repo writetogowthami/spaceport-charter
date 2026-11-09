@@ -1,0 +1,22 @@
+[
+  {"name": "Alex Nova", "valid": true, "normalized": "Alex Nova"},
+  {"name": "José Álvarez", "valid": true, "normalized": "José Álvarez"},
+  {"name": "O'Connor", "valid": true, "normalized": "O'Connor"},
+  {"name": "Anne-Marie", "valid": true, "normalized": "Anne-Marie"},
+  {"name": "de la Cruz", "valid": true, "normalized": "de la Cruz"},
+  {"name": "  McDonald  ", "valid": true, "normalized": "McDonald"},
+  {"name": "A\u0301lex", "valid": true, "normalized": "A\u0301lex"},
+  {"name": "\u0085Alex\u0085", "valid": true, "normalized": "Alex"},
+  {"name": "\uFEFFAlex\uFEFF", "valid": true, "normalized": "Alex"},
+  {"name": "Ᲊlex", "valid": false},
+  {"name": "\uD803\uDF80lex", "valid": true, "normalized": "\uD803\uDF80lex"},
+  {"name": "\uD804\uDF80lex", "valid": false},
+  {"name": "", "valid": false},
+  {"name": "A", "valid": false},
+  {"name": "Alex123", "valid": false},
+  {"name": "Alex!", "valid": false},
+  {"name": "Alex_Nova", "valid": false},
+  {"name": "Alex\tNova", "valid": false},
+  {"name": "Alex\nNova", "valid": false},
+  {"name": "Alex🚀", "valid": false}
+]

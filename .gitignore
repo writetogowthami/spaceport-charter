@@ -36,3 +36,6 @@ htmlcov/
 *.sqlite3
 *.db-journal
 *.db.backup
+
+# Persistent local QA data
+backend/local-data/

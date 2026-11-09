@@ -1,6 +1,4 @@
-/* =====================================================
-   FOOTER
-   ===================================================== */
+/* Footer */
 
 footer {
   padding: 25px 20px 35px;
@@ -11,9 +9,7 @@ footer {
   letter-spacing: 1.5px;
 }
 
-/* =====================================================
-   RESPONSIVE — TABLET
-   ===================================================== */
+/* Responsive — tablet */
 
 @media (max-width: 1000px) {
   .slot-grid {
@@ -29,9 +25,7 @@ footer {
   }
 }
 
-/* =====================================================
-   RESPONSIVE — SMALL TABLET
-   ===================================================== */
+/* Responsive — small tablet */
 
 @media (max-width: 760px) {
   .container {
@@ -79,9 +73,7 @@ footer {
   }
 }
 
-/* =====================================================
-   RESPONSIVE — CUSTOM TIME / BOOKING MODE
-   ===================================================== */
+/* Responsive — custom time / booking mode */
 
 @media (max-width: 600px) {
   .slots-panel > .between {
@@ -123,9 +115,7 @@ footer {
   }
 }
 
-/* =====================================================
-   RESPONSIVE — MOBILE
-   ===================================================== */
+/* Responsive — mobile */
 
 @media (max-width: 480px) {
   .brand {
@@ -190,10 +180,6 @@ footer {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .slot {
-    height: 59px;
-  }
-
   .legend strong {
     margin-left: 0;
     width: 100%;
@@ -232,9 +218,7 @@ footer {
   }
 }
 
-/* =====================================================
-   ACCESSIBILITY — REDUCED MOTION
-   ===================================================== */
+/* Accessibility — reduced motion */
 
 @media (prefers-reduced-motion: reduce) {
   .slot,

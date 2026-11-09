@@ -1,4 +1,11 @@
-import { centralToISO, dateInCentral, dateLabel, timeInCentral } from "./schedule";
+import {
+  centralToISO,
+  dateInCentral,
+  dateLabel,
+  timeInCentral,
+  hhmm,
+  isValidDate,
+} from "./schedule";
 import { isCompleteTime } from "./charterInputs";
 
 export const OPENING_MINUTES = 360;
@@ -30,17 +37,42 @@ export function isQuickSlotAvailable({
   loading,
   error,
 }) {
-  if (!availabilityIsCurrent || loading || error) {
+  if (!isValidDate(date) || !availabilityIsCurrent || loading || error) {
     return false;
   }
 
   const end = start + duration;
 
-  if (end > CLOSING_MINUTES) {
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    start < OPENING_MINUTES ||
+    end > CLOSING_MINUTES
+  ) {
     return false;
   }
 
-  if (new Date(centralToISO(date, start)).getTime() <= now) {
+  const startISO = centralToISO(date, start);
+  const endISO = centralToISO(date, end);
+
+  const startInstant = new Date(startISO);
+  const endInstant = new Date(endISO);
+
+  // Reject conversions that do not round-trip to the requested Central times.
+  if (
+    !Number.isFinite(startInstant.getTime()) ||
+    !Number.isFinite(endInstant.getTime()) ||
+    dateInCentral(startInstant) !== date ||
+    dateInCentral(endInstant) !== date ||
+    timeInCentral(startISO) !== hhmm(start) ||
+    timeInCentral(endISO) !== hhmm(end) ||
+    endInstant.getTime() <= startInstant.getTime()
+  ) {
+    return false;
+  }
+
+  if (startInstant.getTime() <= now) {
     return false;
   }
 
@@ -57,6 +89,9 @@ export function validateCustomTime({
   availabilityIsCurrent,
   error,
 }) {
+  if (!isValidDate(date)) {
+    return { valid: false, neutral: true, message: "Choose a mission date to check availability." };
+  }
   const start = parseTime(customStart);
   const end = parseTime(customEnd);
 
@@ -144,7 +179,7 @@ export function validateCustomTime({
       valid: false,
       message:
         "This mission overlaps an unavailable window, " +
-        "including the 30-minute refueling buffer. " +
+        "including the spacecraft's required refueling buffer. " +
         "Choose another launch or return time.",
     };
   }

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { api } from "../../api";
@@ -15,12 +15,44 @@ vi.mock("../../api", () => ({
   },
 }));
 
+beforeEach(() => {
+  vi.stubGlobal("scrollTo", vi.fn());
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("Charter availability consistency", () => {
+  it("handles clearing and restoring the mission date without stale availability", async () => {
+    api.availability.mockResolvedValue([]);
+    render(
+      <Charter
+        ships={[{ id: 1, name: "USS Wanderer" }]}
+        shipsReady={true}
+        onBooked={vi.fn()}
+        onFleet={vi.fn()}
+      />
+    );
+    const tomorrow = shiftDate(dateInCentral(), 1);
+    const input = screen.getByLabelText("MISSION DATE");
+    fireEvent.change(input, { target: { value: tomorrow } });
+    await screen.findByRole("button", { name: "10:00 to 11:00 Central Time, Available" });
+    api.availability.mockClear();
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByText("Choose a mission date to see launch windows.")).toBeTruthy();
+    expect(document.querySelector(".btn-confirm").disabled).toBe(true);
+    expect(api.availability).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Custom time" }));
+    fireEvent.change(screen.getByLabelText("LAUNCH TIME"), { target: { value: "10:00" } });
+    fireEvent.change(screen.getByLabelText("RETURN TIME"), { target: { value: "11:00" } });
+    expect(screen.getByText("Choose a mission date to check availability.")).toBeTruthy();
+    fireEvent.change(input, { target: { value: tomorrow } });
+    await waitFor(() => expect(api.availability).toHaveBeenCalledWith(1, tomorrow));
+  });
+
   it("displays consistent mission and schedule headings", () => {
     api.availability.mockResolvedValue([]);
 
@@ -29,23 +61,70 @@ describe("Charter availability consistency", () => {
       { id: 2, name: "Nostromo" },
     ];
 
-    render(
-        <Charter
-          ships={ships}
-          shipsReady={true}
-          onBooked={vi.fn()}
-          onFleet={vi.fn()}
-        />
-      );
+    render(<Charter ships={ships} shipsReady={true} onBooked={vi.fn()} onFleet={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Mission details", level: 2 })).toBeTruthy();
 
     expect(screen.getByRole("heading", { name: "Schedule availability", level: 2 })).toBeTruthy();
 
-    expect(screen.getByRole("heading", { name: "Select launch window", level: 2 })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Available starts for a 60-minute mission", level: 2 })
+    ).toBeTruthy();
 
-    expect(screen.getByText("Reserved and blocked times")).toBeTruthy();
+    expect(screen.getByText("Spacecraft blocked periods")).toBeTruthy();
   });
+  it("shows duration-specific return times without changing the blocked periods", async () => {
+    api.availability.mockResolvedValue([{ start: "11:00", end: "13:00" }]);
+
+    render(
+      <Charter
+        ships={[{ id: 1, name: "USS Wanderer" }]}
+        shipsReady={true}
+        onBooked={vi.fn()}
+        onFleet={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("MISSION DATE"), {
+      target: { value: shiftDate(dateInCentral(), 1) },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /^10:00/ }).disabled).toBe(false);
+    });
+
+    expect(
+      screen.getByRole("button", { name: "10:00 to 11:00 Central Time, Available" }).textContent
+    ).toContain("10:00 – 11:00");
+    expect(screen.getByRole("button", { name: /^10:30/ }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: /^13:00/ }).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: /^21:30/ }).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("DURATION"), { target: { value: "90" } });
+
+    expect(
+      screen.getByRole("heading", { name: "Available starts for a 90-minute mission" })
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^10:00/ }).disabled).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "10:00 to 11:30 Central Time, Unavailable" }).textContent
+    ).toContain("10:00 – 11:30");
+    expect(
+      screen.getByRole("group", { name: "11:00 to 13:00 Central Time, unavailable" })
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("DURATION"), { target: { value: "240" } });
+    expect(screen.getByRole("button", { name: /^21:30/ }).disabled).toBe(true);
+    const nextDayCard = screen.getByRole("button", {
+      name: "21:30 to 01:30 Central Time, return next day, Past closing",
+    });
+    expect(nextDayCard.textContent).toContain("21:30 – 01:30");
+    expect(nextDayCard.textContent).toContain("Past closing · +1 day");
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom time" }));
+    expect(screen.getByRole("heading", { name: "Select custom mission times" })).toBeTruthy();
+  });
+
   it("disables confirmation until the new spacecraft availability loads", async () => {
     let resolveSecondShip;
 
@@ -64,14 +143,7 @@ describe("Charter availability consistency", () => {
       { id: 2, name: "Nostromo" },
     ];
 
-    render(
-        <Charter
-          ships={ships}
-          shipsReady={true}
-          onBooked={vi.fn()}
-          onFleet={vi.fn()}
-        />
-      );
+    render(<Charter ships={ships} shipsReady={true} onBooked={vi.fn()} onFleet={vi.fn()} />);
 
     const tomorrow = shiftDate(dateInCentral(), 1);
 
@@ -133,24 +205,15 @@ describe("Charter availability consistency", () => {
       { id: 2, name: "Nostromo" },
     ];
 
-    render(
-        <Charter
-          ships={ships}
-          shipsReady={true}
-          onBooked={vi.fn()}
-          onFleet={vi.fn()}
-        />
-      );
+    render(<Charter ships={ships} shipsReady={true} onBooked={vi.fn()} onFleet={vi.fn()} />);
 
     // The first spacecraft's request is still pending.
     expect(api.availability).toHaveBeenCalledWith(1, expect.any(String));
 
-    // Switch spacecraft while the first request is pending.
     fireEvent.change(screen.getByLabelText("SPACECRAFT"), {
       target: { value: "2" },
     });
 
-    // Verify spacecraft 2's availability request was made.
     await waitFor(() => {
       expect(api.availability).toHaveBeenCalledWith(2, expect.any(String));
 
@@ -170,12 +233,11 @@ describe("Charter availability consistency", () => {
     // Spacecraft 2 must still show its own clear schedule.
     expect(screen.getByText("No blocked times")).toBeTruthy();
 
-    // No blocked-window cards should appear.
     expect(document.querySelectorAll(".blocked-window")).toHaveLength(0);
   });
   it("prevents booking until spacecraft loading succeeds", async () => {
     api.availability.mockResolvedValue([]);
-  
+
     api.createBooking.mockResolvedValue({
       id: 101,
       shipId: 1,
@@ -183,76 +245,62 @@ describe("Charter availability consistency", () => {
       startTime: "2028-02-01T16:00:00Z",
       endTime: "2028-02-01T17:00:00Z",
     });
-  
+
     const ships = [{ id: 1, name: "USS Wanderer" }];
     const onBooked = vi.fn();
-  
+
     const { rerender } = render(
-      <Charter
-        ships={ships}
-        shipsReady={false}
-        onBooked={onBooked}
-        onFleet={vi.fn()}
-      />
+      <Charter ships={ships} shipsReady={false} onBooked={onBooked} onFleet={vi.fn()} />
     );
-  
+
     const tomorrow = shiftDate(dateInCentral(), 1);
-  
+
     fireEvent.change(screen.getByLabelText("MISSION DATE"), {
       target: { value: tomorrow },
     });
-  
+
     fireEvent.change(screen.getByLabelText("Pilot name"), {
       target: { value: "Alex Nova" },
     });
-  
-    fireEvent.click(
-      screen.getByRole("button", { name: "Custom time" })
-    );
-  
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom time" }));
+
     fireEvent.change(screen.getByLabelText("LAUNCH TIME"), {
       target: { value: "10:00" },
     });
-  
+
     fireEvent.change(screen.getByLabelText("RETURN TIME"), {
       target: { value: "11:00" },
     });
-  
+
     const confirmButton = document.querySelector(".btn-confirm");
-  
+
     expect(confirmButton).not.toBeNull();
-  
+
     // Availability may finish, but spacecraft are not ready.
     await waitFor(() => {
       expect(screen.getByText("No blocked times")).toBeTruthy();
     });
-  
+
     expect(confirmButton.disabled).toBe(true);
-  
+
     fireEvent.click(confirmButton);
-  
+
     expect(api.createBooking).not.toHaveBeenCalled();
-  
+
     // Simulate the parent successfully loading spacecraft.
-    rerender(
-      <Charter
-        ships={ships}
-        shipsReady={true}
-        onBooked={onBooked}
-        onFleet={vi.fn()}
-      />
-    );
-  
+    rerender(<Charter ships={ships} shipsReady={true} onBooked={onBooked} onFleet={vi.fn()} />);
+
     await waitFor(() => {
       expect(confirmButton.disabled).toBe(false);
     });
-  
+
     fireEvent.click(confirmButton);
-  
+
     await waitFor(() => {
       expect(api.createBooking).toHaveBeenCalledTimes(1);
     });
-  
+
     expect(onBooked).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,12 +1,27 @@
 export const TZ = "America/Chicago";
 
-export const SHIPS = [
-  { id: 1, name: "USS Wanderer" },
-  { id: 2, name: "Nostromo" },
-  { id: 3, name: "Serenity" },
-  { id: 4, name: "Rocinante" },
-  { id: 5, name: "Millennium Falcon" },
-];
+const centralFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const dateLabelFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+export function centralParts(date) {
+  return Object.fromEntries(
+    centralFormatter.formatToParts(date).map((part) => [part.type, part.value])
+  );
+}
 
 export const DURATIONS = [60, 90, 120, 150, 180, 240];
 export const SLOTS = Array.from({ length: 32 }, (_, i) => 360 + i * 30);
@@ -14,20 +29,10 @@ export const SLOTS = Array.from({ length: 32 }, (_, i) => 360 + i * 30);
 export const pad = (n) => String(n).padStart(2, "0");
 export const hhmm = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
 
-export function centralParts(date) {
-  return Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: TZ,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
-      .formatToParts(date)
-      .map((p) => [p.type, p.value])
-  );
+export function dateLabel(date) {
+  if (!isValidDate(date)) return "Choose a date";
+
+  return dateLabelFormatter.format(new Date(`${date}T12:00:00Z`));
 }
 
 export function dateInCentral(date = new Date()) {
@@ -40,17 +45,14 @@ export function timeInCentral(iso) {
   return `${p.hour}:${p.minute}`;
 }
 
-export function dateLabel(date) {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00Z`));
-}
-
-export function dateTimeLabel(iso) {
-  return `${dateLabel(dateInCentral(new Date(iso)))} · ${timeInCentral(iso)} CT`;
+export function isValidDate(date) {
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const value = new Date(`${date}T12:00:00Z`);
+  return (
+    Number.isFinite(value.getTime()) &&
+    value.getUTCFullYear() > 0 &&
+    value.toISOString().slice(0, 10) === date
+  );
 }
 
 export function shiftDate(date, days) {
@@ -97,6 +99,8 @@ export function normalizeBooking(b) {
     pilotName: b.pilotName ?? b.pilot_name ?? "Unknown pilot",
     startTime: b.startTime ?? b.start_time,
     endTime: b.endTime ?? b.end_time,
+    status: b.status ?? "confirmed",
+    cancelledAt: b.cancelledAt ?? b.cancelled_at ?? null,
   };
 }
 
@@ -126,8 +130,6 @@ export function windowMinutes(value, date) {
 }
 
 export function parseAvailability(raw, date) {
-  // Blocked windows must come from the backend.
-  // They must include the required refueling buffer.
   const source = Array.isArray(raw)
     ? raw
     : (raw?.unavailableWindows ??

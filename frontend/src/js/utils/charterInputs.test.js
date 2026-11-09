@@ -4,9 +4,42 @@ import {
   normalizeTimeInput,
   isCompleteTime,
   normalizeCompletedTime,
-  capitalizePilotName,
   isValidPilotName,
 } from "./charterInputs";
+
+describe("pilot-name validation", () => {
+  it.each([
+    "Alex Nova",
+    "José Álvarez",
+    "O'Connor",
+    "Anne-Marie",
+    "de la Cruz",
+    "McDonald",
+    "  alex nova  ",
+    "A\u0301lex",
+    "A".repeat(100),
+  ])("accepts valid name: %s", (name) => {
+    expect(isValidPilotName(name)).toBe(true);
+  });
+
+  it.each([
+    "",
+    " ",
+    "A",
+    "A".repeat(101),
+    "Alex123",
+    "Alex!",
+    "Alex_Nova",
+    "Alex\tNova",
+    "Alex\nNova",
+    "Alex\u0000Nova",
+    "Alex🚀",
+    null,
+    undefined,
+  ])("rejects invalid name: %s", (name) => {
+    expect(isValidPilotName(name)).toBe(false);
+  });
+});
 
 describe("Charter time input", () => {
   it("rejects alphabetic characters", () => {
@@ -100,10 +133,6 @@ describe("Charter time input", () => {
 });
 
 describe("Pilot name", () => {
-  it("capitalizes each word", () => {
-    expect(capitalizePilotName("alex nova")).toBe("Alex Nova");
-  });
-
   it("rejects whitespace-only names", () => {
     expect(isValidPilotName("   ")).toBe(false);
   });

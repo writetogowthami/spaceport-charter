@@ -1,3 +1,5 @@
+export { isValidPilotName, PILOT_NAME_MIN_LENGTH, PILOT_NAME_MAX_LENGTH } from "./pilotNamePolicy";
+
 export function normalizeTimeInput(raw, previous = "") {
   if (raw === "") return "";
 
@@ -22,7 +24,7 @@ export function normalizeTimeInput(raw, previous = "") {
     return raw;
   }
 
-  // Do not format until all four digits are entered.
+  // Wait for four digits before inserting a colon into compact input.
   if (!/^\d{1,4}$/.test(raw)) return previous;
 
   if (raw.length < 4) return raw;
@@ -51,21 +53,4 @@ export function normalizeCompletedTime(value) {
   if (hours > 23 || minutes > 59) return value;
 
   return `${String(hours).padStart(2, "0")}:${match[2]}`;
-}
-
-export function capitalizePilotName(value) {
-  return value.replace(
-    /(^|[\s'-])(\p{L})/gu,
-    (_, separator, letter) => separator + letter.toLocaleUpperCase()
-  );
-}
-
-export function isValidPilotName(value) {
-  const name = value.trim();
-
-  if (name.length < 2 || name.length > 100) {
-    return false;
-  }
-
-  return /^[\p{L}\p{M}][\p{L}\p{M}\s'-]*$/u.test(name);
 }

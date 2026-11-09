@@ -1,5 +1,5 @@
 import { centralToISO } from "./schedule";
-import { capitalizePilotName } from "./charterInputs";
+import { trimPilotName } from "./pilotNamePolicy";
 
 export function buildBookingPayload({
   shipId,
@@ -11,17 +11,18 @@ export function buildBookingPayload({
   customStartMinutes,
   customEndMinutes,
 }) {
-  const startTime =
-    bookingMode === "quick" ? centralToISO(date, selected) : centralToISO(date, customStartMinutes);
+  const isQuickBooking = bookingMode === "quick";
 
-  const endTime =
-    bookingMode === "quick"
-      ? new Date(new Date(startTime).getTime() + duration * 60000).toISOString()
-      : centralToISO(date, customEndMinutes);
+  const startMinutes = isQuickBooking ? selected : customStartMinutes;
+
+  const endMinutes = isQuickBooking ? startMinutes + duration : customEndMinutes;
+
+  const startTime = centralToISO(date, startMinutes);
+  const endTime = centralToISO(date, endMinutes);
 
   return {
     shipId: Number(shipId),
-    pilotName: capitalizePilotName(pilotName.trim()),
+    pilotName: trimPilotName(pilotName),
     startTime,
     endTime,
   };

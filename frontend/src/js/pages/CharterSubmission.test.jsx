@@ -34,14 +34,7 @@ function setup() {
   const onBooked = vi.fn();
   const onFleet = vi.fn();
 
-  render(
-    <Charter
-      ships={ships}
-      shipsReady={true}
-      onBooked={onBooked}
-      onFleet={onFleet}
-    />
-  );
+  render(<Charter ships={ships} shipsReady={true} onBooked={onBooked} onFleet={onFleet} />);
 
   return { onBooked, onFleet };
 }
@@ -125,11 +118,6 @@ describe("Charter booking submission", () => {
 
     const payload = api.createBooking.mock.calls[0][0];
 
-    expect(payload).toMatchObject({
-      shipId: 1,
-      pilotName: "Alex Nova",
-    });
-
     expect(new Date(payload.endTime).getTime() - new Date(payload.startTime).getTime()).toBe(
       60 * 60000
     );
@@ -177,6 +165,28 @@ describe("Charter booking submission", () => {
     await waitFor(() => {
       expect(document.querySelector(".btn-confirm").disabled).toBe(false);
     });
+  });
+
+  it("focuses the conflict notice after refreshed slots finish loading", async () => {
+    setup();
+    const confirmButton = await prepareBooking();
+    const refreshed = deferred();
+    api.availability.mockReturnValueOnce(refreshed.promise);
+    api.createBooking.mockRejectedValue(
+      Object.assign(new Error("Schedule conflict"), { status: 409 })
+    );
+    fireEvent.click(confirmButton);
+    await screen.findByText("Mission could not be confirmed");
+    const notice = document.querySelector(".booking-error-banner");
+    const scrollIntoView = vi.fn();
+    notice.scrollIntoView = scrollIntoView;
+    expect(document.activeElement).not.toBe(notice);
+    await act(async () => {
+      refreshed.resolve([]);
+      await refreshed.promise;
+    });
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "instant" });
   });
 
   it("displays a normal API error without refreshing availability", async () => {

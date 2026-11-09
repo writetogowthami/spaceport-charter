@@ -98,16 +98,18 @@ export default function App() {
 
       {page === "charter" ? (
         <Charter
-        ships={ships}
-        shipsReady={!shipLoading && !shipError && ships.length > 0}
-        onBooked={() => setVersion((n) => n + 1)}
-        onFleet={() => setPage("fleet")}
-      />
+          ships={ships}
+          shipsReady={!shipLoading && !shipError && ships.length > 0}
+          onBooked={() => setVersion((n) => n + 1)}
+          onFleet={() => setPage("fleet")}
+        />
       ) : (
         <Fleet ships={ships} version={version} />
       )}
 
-      <footer>✦ PACIFIC SPACEPORT · ALL TIMES CENTRAL · 30 MIN REFUELING BETWEEN MISSIONS</footer>
+      <footer>
+        ✦ PACIFIC SPACEPORT · ALL TIMES CENTRAL · SPACECRAFT-SPECIFIC REFUELING POLICIES APPLY
+      </footer>
     </>
   );
 }

@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { SLOTS, centralToISO, dateInCentral, timeInCentral } from "./schedule";
+import {
+  SLOTS,
+  centralToISO,
+  dateInCentral,
+  timeInCentral,
+  isValidDate,
+  dateLabel,
+} from "./schedule";
 
 describe("Central Time scheduling", () => {
+  it("rejects empty and impossible calendar dates without throwing during display", () => {
+    for (const date of ["", "2030-02-30", "2030-13-01", "0000-01-01", null, undefined]) {
+      expect(isValidDate(date)).toBe(false);
+      expect(dateLabel(date)).toBe("Choose a date");
+    }
+    expect(isValidDate("2028-02-29")).toBe(true);
+    expect(dateLabel("2030-01-15")).toBe("Jan 15, 2030");
+  });
   it("generates 32 half-hour launch starts", () => {
     expect(SLOTS).toHaveLength(32);
     expect(SLOTS[0]).toBe(360);

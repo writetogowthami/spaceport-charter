@@ -13,10 +13,17 @@ async function request(path, options = {}) {
       },
     });
   } catch {
+    const isWriteRequest = ["POST", "PUT", "PATCH", "DELETE"].includes(
+      (options.method ?? "GET").toUpperCase()
+    );
+
     throw new Error(
-      "Network error: Could not reach the booking service. " +
-        "Check Fleet Manager before retrying, since the " +
-        "booking may have succeeded."
+      isWriteRequest
+        ? "Network error: Could not reach the booking service. " +
+            "Check Fleet Manager before retrying, since the " +
+            "operation may have succeeded."
+        : "Network error: Could not reach the booking service. " +
+            "Check that the backend is running and try again."
     );
   }
 
@@ -30,7 +37,7 @@ async function request(path, options = {}) {
           }. Check your Vite proxy and backend API routes.`
         : `Booking service returned HTTP ${response.status}. Please try again.`
     );
-  
+
     error.status = response.status;
     throw error;
   }
@@ -45,9 +52,17 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const detail = data?.detail ?? data?.message ?? data?.error;
+    const message = Array.isArray(detail)
+      ? detail
+          .map((issue) => issue?.msg)
+          .filter((value) => typeof value === "string" && value.trim())
+          .join(" ")
+      : detail;
 
     const error = new Error(
-      typeof detail === "string" ? detail : `API request failed (${response.status})`
+      typeof message === "string" && message.trim()
+        ? message
+        : `API request failed (${response.status})`
     );
 
     error.status = response.status;
@@ -70,5 +85,10 @@ export const api = {
     request("/bookings", {
       method: "POST",
       body: JSON.stringify(booking),
+    }),
+
+  cancelBooking: (bookingId) =>
+    request(`/bookings/${encodeURIComponent(bookingId)}/cancel`, {
+      method: "POST",
     }),
 };

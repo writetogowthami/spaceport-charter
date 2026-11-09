@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import {
   asArray,
@@ -10,8 +10,10 @@ import {
   centralToISO,
   windowMinutes,
   pad,
+  isValidDate,
 } from "../utils/schedule";
 import TimeRange from "../components/TimeRange";
+import Notification from "../components/Notification";
 
 export default function Fleet({ ships, version }) {
   const [bookings, setBookings] = useState([]);
@@ -26,15 +28,75 @@ export default function Fleet({ ships, version }) {
   const [to, setTo] = useState("");
   const [sort, setSort] = useState("asc");
   const [timelineDate, setTimelineDate] = useState(dateInCentral());
+  const timelineDateIsValid = isValidDate(timelineDate);
   const [expandedShips, setExpandedShips] = useState({});
   const [hoveredMission, setHoveredMission] = useState(null);
-
   const [selectedMission, setSelectedMission] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancellationError, setCancellationError] = useState("");
+  const [notification, setNotification] = useState(null);
+  const notificationId = useRef(0);
+  const cancelDialogRef = useRef(null);
+  const cancellationLock = useRef(false);
 
+  useEffect(() => {
+    if (!cancelTarget) return;
+
+    const dialog = cancelDialogRef.current;
+    const previousFocus = document.activeElement;
+    dialog.querySelector("button")?.focus();
+
+    function handleDialogKey(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!cancellationLock.current) setCancelTarget(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const buttons = [...dialog.querySelectorAll("button:not(:disabled)")];
+      const first = buttons[0];
+      const last = buttons.at(-1);
+      if (!first) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (
+        event.shiftKey &&
+        (document.activeElement === first || !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleDialogKey);
+    return () => {
+      document.removeEventListener("keydown", handleDialogKey);
+      const target = previousFocus?.isConnected ? previousFocus : document.querySelector("main h1");
+      target?.focus({ preventScroll: true });
+    };
+  }, [cancelTarget]);
+
+  function notify(type, title, message) {
+    notificationId.current += 1;
+    setNotification({
+      id: notificationId.current,
+      type,
+      title,
+      message,
+    });
+  }
   const activeMission = selectedMission ?? hoveredMission;
 
   useEffect(() => {
-    setExpandedShips({});
+    setExpandedShips((current) => (Object.keys(current).length === 0 ? current : {}));
   }, [search, shipFilter, status, from, to, sort]);
 
   useEffect(() => {
@@ -46,17 +108,27 @@ export default function Fleet({ ships, version }) {
     api
       .bookings()
       .then((data) => {
-        if (active) {
-          const list = asArray(data, ["bookings", "data", "items"]);
+        if (!active) return;
 
-          setBookings(list.map(normalizeBooking));
-          setHasLoaded(true);
-        }
+        const list = asArray(data, ["bookings", "data", "items"]);
+
+        setBookings(list.map(normalizeBooking));
+        setHasLoaded(true);
       })
       .catch((err) => {
-        if (active) {
-          setError(`Unable to load fleet bookings: ${err.message}`);
-        }
+        if (!active) return;
+
+        const message = `Unable to load fleet bookings: ${err.message}`;
+
+        setError(message);
+
+        notificationId.current += 1;
+        setNotification({
+          id: notificationId.current,
+          type: "error",
+          title: "Fleet schedule unavailable",
+          message,
+        });
       })
       .finally(() => {
         if (active) {
@@ -74,76 +146,186 @@ export default function Fleet({ ships, version }) {
     setSelectedMission(null);
   }, [timelineDate, bookings]);
 
-  const now = Date.now();
-  const today = dateInCentral();
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const refreshClock = () => setNow(Date.now());
+
+    const timer = window.setInterval(refreshClock, 60_000);
+
+    window.addEventListener("focus", refreshClock);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshClock);
+    };
+  }, []);
+
+  const today = useMemo(() => dateInCentral(new Date(now)), [now]);
+
+  const shipNames = useMemo(
+    () => new Map(ships.map((ship) => [Number(ship.id), ship.name])),
+    [ships]
+  );
+
+  const indexedBookings = useMemo(
+    () =>
+      bookings.map((booking) => {
+        const startMs = Date.parse(booking.startTime);
+        const endMs = Date.parse(booking.endTime);
+
+        return {
+          booking,
+          startMs,
+          endMs,
+          centralDate: Number.isFinite(startMs) ? dateInCentral(new Date(startMs)) : "",
+        };
+      }),
+    [bookings]
+  );
+
+  const bookingDates = useMemo(
+    () => new Map(indexedBookings.map(({ booking, centralDate }) => [booking.id, centralDate])),
+    [indexedBookings]
+  );
 
   const filtered = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        const start = new Date(b.startTime).getTime();
+    const searchTerm = search.trim().toLowerCase();
+    const selectedShip = Number(shipFilter);
 
-        const end = new Date(b.endTime).getTime();
+    return indexedBookings
+      .filter(({ booking, startMs, endMs, centralDate }) => {
+        const isCancelled = booking.status === "cancelled";
 
         const matchesStatus =
           status === "all" ||
-          (status === "upcoming"
-            ? end >= now
-            : status === "past"
-              ? end < now
-              : start <= now && end > now);
+          (status === "cancelled"
+            ? isCancelled
+            : !isCancelled &&
+              (status === "upcoming"
+                ? endMs >= now
+                : status === "past"
+                  ? endMs < now
+                  : startMs <= now && endMs > now));
 
-        const shipName = ships.find((s) => Number(s.id) === b.shipId)?.name ?? "";
+        if (!matchesStatus) return false;
 
-        return (
-          matchesStatus &&
-          (shipFilter === "all" || b.shipId === Number(shipFilter)) &&
-          (!from || dateInCentral(new Date(b.startTime)) >= from) &&
-          (!to || dateInCentral(new Date(b.startTime)) <= to) &&
-          (!search ||
-            `${b.pilotName} ${b.id ?? ""} ${shipName}`.toLowerCase().includes(search.toLowerCase()))
-        );
+        if (shipFilter !== "all" && booking.shipId !== selectedShip) {
+          return false;
+        }
+
+        if (from && centralDate < from) return false;
+        if (to && centralDate > to) return false;
+
+        if (searchTerm) {
+          const shipName = shipNames.get(booking.shipId) ?? "";
+
+          const searchableText =
+            `${booking.pilotName} ${booking.id ?? ""} ${shipName}`.toLowerCase();
+
+          if (!searchableText.includes(searchTerm)) {
+            return false;
+          }
+        }
+
+        return true;
       })
-      .sort((a, b) => (new Date(a.startTime) - new Date(b.startTime)) * (sort === "asc" ? 1 : -1));
-  }, [bookings, status, shipFilter, from, to, search, sort, ships, now]);
+      .sort((a, b) => (a.startMs - b.startMs) * (sort === "asc" ? 1 : -1))
+      .map(({ booking }) => booking);
+  }, [indexedBookings, status, shipFilter, from, to, search, sort, shipNames, now]);
 
-  const upcoming = bookings.filter((b) => new Date(b.endTime).getTime() >= now).length;
+  const filteredByShip = useMemo(() => {
+    const groups = new Map();
 
-  const todayCount = bookings.filter((b) => dateInCentral(new Date(b.startTime)) === today).length;
+    for (const booking of filtered) {
+      const shipId = Number(booking.shipId);
 
-  const utilization = (() => {
-    const periodStart = new Date(centralToISO(shiftDate(today, -29), 360)).getTime();
+      if (!groups.has(shipId)) {
+        groups.set(shipId, []);
+      }
 
-    const periodEnd = new Date(centralToISO(today, 1320)).getTime();
+      groups.get(shipId).push(booking);
+    }
 
-    const bookedMinutes = bookings.reduce((sum, b) => {
-      const start = new Date(b.startTime).getTime();
+    return groups;
+  }, [filtered]);
 
-      const end = new Date(b.endTime).getTime();
+  const { upcoming, todayCount, utilization } = useMemo(() => {
+    const periodStart = Date.parse(centralToISO(shiftDate(today, -29), 360));
 
-      return sum + Math.max(0, Math.min(periodEnd, end) - Math.max(periodStart, start)) / 60000;
-    }, 0);
+    const periodEnd = Date.parse(centralToISO(today, 1320));
 
-    return ships.length
+    let upcomingCount = 0;
+    let todayMissionCount = 0;
+    let bookedMinutes = 0;
+
+    for (const item of indexedBookings) {
+      const { booking, startMs, endMs, centralDate } = item;
+
+      if (booking.status === "cancelled") {
+        continue;
+      }
+
+      if (endMs >= now) {
+        upcomingCount += 1;
+      }
+
+      if (centralDate === today) {
+        todayMissionCount += 1;
+      }
+
+      if (Number.isFinite(startMs) && Number.isFinite(endMs)) {
+        const overlapMs = Math.max(0, Math.min(periodEnd, endMs) - Math.max(periodStart, startMs));
+
+        bookedMinutes += overlapMs / 60_000;
+      }
+    }
+
+    const utilizationPercent = ships.length
       ? Math.min(100, (bookedMinutes / (ships.length * 30 * 16 * 60)) * 100).toFixed(1)
       : "0.0";
-  })();
 
-  function timeline(shipId) {
-    const dayStart = new Date(centralToISO(timelineDate, 0)).getTime();
+    return {
+      upcoming: upcomingCount,
+      todayCount: todayMissionCount,
+      utilization: utilizationPercent,
+    };
+  }, [indexedBookings, ships.length, now, today]);
 
-    const nextDayStart = new Date(centralToISO(shiftDate(timelineDate, 1), 0)).getTime();
+  const timelineByShip = useMemo(() => {
+    const groups = new Map();
 
-    return bookings.filter((b) => {
-      if (b.shipId !== shipId) return false;
+    if (!timelineDateIsValid) {
+      return groups;
+    }
 
-      const start = new Date(b.startTime).getTime();
-      const end = new Date(b.endTime).getTime();
+    const dayStart = Date.parse(centralToISO(timelineDate, 0));
 
-      return (
-        Number.isFinite(start) && Number.isFinite(end) && start < nextDayStart && end > dayStart
-      );
-    });
-  }
+    const nextDayStart = Date.parse(centralToISO(shiftDate(timelineDate, 1), 0));
+
+    for (const { booking, startMs, endMs } of indexedBookings) {
+      if (booking.status === "cancelled") continue;
+
+      if (
+        !Number.isFinite(startMs) ||
+        !Number.isFinite(endMs) ||
+        startMs >= nextDayStart ||
+        endMs <= dayStart
+      ) {
+        continue;
+      }
+
+      const shipId = Number(booking.shipId);
+
+      if (!groups.has(shipId)) {
+        groups.set(shipId, []);
+      }
+
+      groups.get(shipId).push(booking);
+    }
+
+    return groups;
+  }, [indexedBookings, timelineDate, timelineDateIsValid]);
 
   function clearFilters() {
     setSearch("");
@@ -152,6 +334,45 @@ export default function Fleet({ ships, version }) {
     setFrom("");
     setTo("");
     setSort("asc");
+  }
+
+  async function confirmCancellation() {
+    if (!cancelTarget || cancellationLock.current) return;
+
+    cancellationLock.current = true;
+    setCancelling(true);
+    setCancellationError("");
+
+    try {
+      const updated = normalizeBooking(await api.cancelBooking(cancelTarget.id));
+
+      setBookings((current) =>
+        current.map((booking) => (booking.id === updated.id ? updated : booking))
+      );
+
+      setCancelTarget(null);
+
+      notify(
+        "success",
+        "Reservation cancelled",
+        `Reservation #${updated.id} was cancelled. ` +
+          "Its mission window and refueling buffer are now available."
+      );
+    } catch (err) {
+      setCancellationError(
+        (err.message || "Cancellation unsuccessful. Please try again.") +
+          (err.status === 409 ? " Close this dialog and refresh the fleet schedule." : "")
+      );
+    } finally {
+      cancellationLock.current = false;
+      setCancelling(false);
+    }
+  }
+
+  function requestCancellation(booking) {
+    setNotification(null);
+    setCancellationError("");
+    setCancelTarget(booking);
   }
 
   return (
@@ -251,6 +472,8 @@ export default function Fleet({ ships, version }) {
             <option value="past">Past</option>
 
             <option value="active">Active now</option>
+
+            <option value="cancelled">Cancelled</option>
           </select>
         </label>
 
@@ -317,6 +540,7 @@ export default function Fleet({ ships, version }) {
             <button
               type="button"
               aria-label="Previous timeline day"
+              disabled={!timelineDateIsValid}
               onClick={() => setTimelineDate((d) => shiftDate(d, -1))}
             >
               ‹
@@ -332,6 +556,7 @@ export default function Fleet({ ships, version }) {
             <button
               type="button"
               aria-label="Next timeline day"
+              disabled={!timelineDateIsValid}
               onClick={() => setTimelineDate((d) => shiftDate(d, 1))}
             >
               ›
@@ -340,13 +565,15 @@ export default function Fleet({ ships, version }) {
         </div>
 
         <p className="timeline-day-status" role="status">
-          {!hasLoaded
-            ? loading
-              ? "Loading timeline…"
-              : "Timeline unavailable."
-            : !ships.some((ship) => timeline(Number(ship.id)).length > 0)
-              ? `No missions scheduled for ${dateLabel(timelineDate)}.`
-              : "All times Central Time · teal missions · amber refueling buffers"}
+          {!timelineDateIsValid
+            ? "Choose a timeline date."
+            : !hasLoaded
+              ? loading
+                ? "Loading timeline…"
+                : "Timeline unavailable."
+              : !ships.some((ship) => (timelineByShip.get(Number(ship.id)) ?? []).length > 0)
+                ? `No missions scheduled for ${dateLabel(timelineDate)}.`
+                : "All times Central Time · teal missions · amber refueling buffers"}
         </p>
 
         <div className="timeline-scroll">
@@ -368,7 +595,7 @@ export default function Fleet({ ships, version }) {
                 <strong>{s.name}</strong>
 
                 <div className="track">
-                  {timeline(Number(s.id)).map((b, i) => {
+                  {(timelineByShip.get(Number(s.id)) ?? []).map((b, i) => {
                     const start = windowMinutes(b.startTime, timelineDate);
 
                     const end = windowMinutes(b.endTime, timelineDate);
@@ -376,9 +603,11 @@ export default function Fleet({ ships, version }) {
                     const right = Math.min(960, Math.max(0, end - 360));
                     const width = Math.max(0, right - left);
 
-                    const bufferBefore = Math.min(30, left);
+                    const refuelMinutes = Number(s.refuelMinutes ?? 30);
 
-                    const bufferAfter = Math.min(30, 960 - right);
+                    const bufferBefore = Math.min(refuelMinutes, left);
+                    const bufferAfter = Math.min(refuelMinutes, 960 - right);
+
                     if (width <= 0) {
                       return null;
                     }
@@ -387,7 +616,7 @@ export default function Fleet({ ships, version }) {
                         {bufferBefore > 0 && (
                           <div
                             className="buffer-bar"
-                            title="30-minute pre-mission refueling buffer"
+                            title={`${refuelMinutes}-minute pre-mission refueling buffer`}
                             style={{
                               left: `${((left - bufferBefore) / 960) * 100}%`,
                               width: `${(bufferBefore / 960) * 100}%`,
@@ -451,7 +680,7 @@ export default function Fleet({ ships, version }) {
                         {bufferAfter > 0 && (
                           <div
                             className="buffer-bar"
-                            title="30-minute post-mission refueling buffer"
+                            title={`${refuelMinutes}-minute post-mission refueling buffer`}
                             style={{
                               left: `${(right / 960) * 100}%`,
                               width: `${(bufferAfter / 960) * 100}%`,
@@ -533,7 +762,7 @@ export default function Fleet({ ships, version }) {
         {ships
           .filter((s) => shipFilter === "all" || Number(shipFilter) === Number(s.id))
           .map((s) => {
-            const list = filtered.filter((b) => b.shipId === Number(s.id));
+            const list = filteredByShip.get(Number(s.id)) ?? [];
 
             return (
               <section className="panel ship-card" key={s.id}>
@@ -552,14 +781,37 @@ export default function Fleet({ ships, version }) {
                 {list.length ? (
                   <div className="booking-list" id={`ship-bookings-${s.id}`}>
                     {list.slice(0, expandedShips[s.id] ? list.length : 5).map((b, i) => (
-                      <div className="booking-row" key={b.id ?? i}>
+                      <div
+                        className={`booking-row ${
+                          b.status === "cancelled" ? "booking-row-cancelled" : ""
+                        }`}
+                        key={b.id ?? i}
+                      >
                         <div className="booking-pilot">
                           <div className="booking-identity">
                             <strong>{b.pilotName}</strong>
                             {b.id != null && <small>Reservation #{b.id}</small>}
+                            {b.status === "cancelled" && (
+                              <span className="booking-cancelled-label">
+                                <span aria-hidden="true">×</span>
+                                Cancelled
+                              </span>
+                            )}
+                            {b.status === "confirmed" && Date.parse(b.startTime) > now && (
+                              <button
+                                type="button"
+                                className="booking-cancel-button"
+                                aria-label={`Cancel reservation ${b.id} for ${b.pilotName}`}
+                                onClick={() => requestCancellation(b)}
+                              >
+                                <span className="booking-cancel-icon" aria-hidden="true">
+                                  ×
+                                </span>
+                                Cancel booking
+                              </button>
+                            )}
                           </div>
                         </div>
-
                         <div className="booking-schedule">
                           <TimeRange
                             start={timeInCentral(b.startTime)}
@@ -567,7 +819,7 @@ export default function Fleet({ ships, version }) {
                           />
 
                           <time dateTime={b.startTime}>
-                            {dateLabel(dateInCentral(new Date(b.startTime)))}
+                            {dateLabel(bookingDates.get(b.id) ?? "")}
                           </time>
                         </div>
                       </div>
@@ -612,6 +864,67 @@ export default function Fleet({ ships, version }) {
             );
           })}
       </div>
+
+      <Notification notification={notification} onDismiss={() => setNotification(null)} />
+
+      {cancelTarget && (
+        <div
+          className="fleet-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !cancelling) {
+              setCancelTarget(null);
+            }
+          }}
+        >
+          <div
+            ref={cancelDialogRef}
+            className="fleet-cancel-dialog"
+            role="alertdialog"
+            tabIndex={-1}
+            aria-modal="true"
+            aria-labelledby="fleet-cancel-title"
+            aria-describedby="fleet-cancel-description"
+          >
+            <h2 id="fleet-cancel-title">Cancel this reservation?</h2>
+
+            <p id="fleet-cancel-description">
+              Are you sure you want to cancel reservation #{cancelTarget.id} for{" "}
+              {cancelTarget.pilotName}?
+            </p>
+
+            <p>
+              This will release the spacecraft's mission window and its refueling buffer. The
+              cancelled reservation will remain in booking history.
+            </p>
+
+            {cancellationError && (
+              <div className="fleet-cancellation-error" role="alert">
+                {cancellationError}
+              </div>
+            )}
+
+            <div className="fleet-dialog-actions">
+              <button
+                type="button"
+                className="btn-outline"
+                disabled={cancelling}
+                onClick={() => setCancelTarget(null)}
+              >
+                Keep reservation
+              </button>
+
+              <button
+                type="button"
+                className="fleet-confirm-cancel"
+                disabled={cancelling}
+                onClick={confirmCancellation}
+              >
+                {cancelling ? "Cancelling…" : "Confirm cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

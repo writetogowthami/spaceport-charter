@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -14,7 +15,6 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.10",

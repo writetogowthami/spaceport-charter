@@ -65,7 +65,7 @@ describe("useCharterBooking", () => {
 
     expect(api.createBooking).toHaveBeenCalledWith({
       shipId: 1,
-      pilotName: "Alex Nova",
+      pilotName: "alex nova",
       startTime: centralToISO("2026-11-10", 600),
       endTime: centralToISO("2026-11-10", 660),
     });

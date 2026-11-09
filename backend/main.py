@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -8,8 +7,15 @@ from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from booking_cancellation import migrate_booking_cancellation
+from pilot_name_policy import (
+    is_valid_pilot_name,
+    trim_pilot_name,
+    validate_pilot_name,
+)
+from refueling_policy import buffer_minutes, migrate_refueling_policy
 
 CENTRAL = ZoneInfo("America/Chicago")
 DB = Path(
@@ -18,7 +24,6 @@ DB = Path(
         Path(__file__).resolve().parent / "spaceport.db",
     )
 )
-BUFFER = timedelta(minutes=30)
 
 app = FastAPI(title="Pacific Spaceport Charter API")
 
@@ -35,18 +40,12 @@ app.add_middleware(
 
 def utc_string(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(
-            "Timestamps must include a UTC offset"
-        )
+        raise ValueError("Timestamps must include a UTC offset")
 
     if value.microsecond:
-        raise ValueError(
-            "Timestamps must have whole-second precision"
-        )
+        raise ValueError("Timestamps must have whole-second precision")
 
-    return value.astimezone(timezone.utc).isoformat(
-        timespec="seconds"
-    )
+    return value.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
 def day_bounds(day: date):
@@ -100,10 +99,7 @@ def time_error(start, end, check_past=False):
         )
 
     if check_past and start_utc <= datetime.now(timezone.utc):
-        return (
-            "Past booking violation: Launch time "
-            "must be in the future."
-        )
+        return "Past booking violation: Launch time must be in the future."
 
     return None
 
@@ -142,6 +138,18 @@ def connection():
             sqlite_valid_times,
         )
 
+        db.create_function(
+            "spaceport_valid_pilot_name",
+            1,
+            lambda value: int(is_valid_pilot_name(value)),
+        )
+
+        db.create_function(
+            "spaceport_trim_pilot_name",
+            1,
+            lambda value: trim_pilot_name(value) if isinstance(value, str) else None,
+        )
+
         yield db
 
     finally:
@@ -168,86 +176,11 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS bookings_ship_time
             ON bookings(ship_id, start_time);
-
-            CREATE TRIGGER IF NOT EXISTS bookings_guard_insert
-            BEFORE INSERT ON bookings
-            BEGIN
-                SELECT RAISE(
-                    ABORT,
-                    'Pilot name is required'
-                )
-                WHERE
-                    NEW.pilot_name IS NULL
-                    OR length(trim(NEW.pilot_name)) = 0
-                    OR length(NEW.pilot_name) > 120;
-
-                SELECT RAISE(
-                    ABORT,
-                    'Invalid mission times or operating hours'
-                )
-                WHERE spaceport_valid_times(
-                    NEW.start_time,
-                    NEW.end_time
-                ) != 1;
-
-                SELECT RAISE(
-                    ABORT,
-                    'Booking overlaps an existing mission or refueling buffer'
-                )
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM bookings b
-                    WHERE b.ship_id = NEW.ship_id
-                      AND unixepoch(b.start_time)
-                          < unixepoch(NEW.end_time) + 1800
-                      AND unixepoch(b.end_time)
-                          > unixepoch(NEW.start_time) - 1800
-                );
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS bookings_guard_update
-            BEFORE UPDATE OF
-                ship_id,
-                pilot_name,
-                start_time,
-                end_time
-            ON bookings
-            BEGIN
-                SELECT RAISE(
-                    ABORT,
-                    'Pilot name is required'
-                )
-                WHERE
-                    NEW.pilot_name IS NULL
-                    OR length(trim(NEW.pilot_name)) = 0
-                    OR length(NEW.pilot_name) > 120;
-
-                SELECT RAISE(
-                    ABORT,
-                    'Invalid mission times or operating hours'
-                )
-                WHERE spaceport_valid_times(
-                    NEW.start_time,
-                    NEW.end_time
-                ) != 1;
-
-                SELECT RAISE(
-                    ABORT,
-                    'Booking overlaps an existing mission or refueling buffer'
-                )
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM bookings b
-                    WHERE b.ship_id = NEW.ship_id
-                      AND b.id != OLD.id
-                      AND unixepoch(b.start_time)
-                          < unixepoch(NEW.end_time) + 1800
-                      AND unixepoch(b.end_time)
-                          > unixepoch(NEW.start_time) - 1800
-                );
-            END;
             """
         )
+
+        migrate_booking_cancellation(db)
+        migrate_refueling_policy(db)
 
 
 init_db()
@@ -257,9 +190,14 @@ class BookingRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     shipId: int = Field(gt=0)
-    pilotName: str = Field(min_length=1, max_length=120)
+    pilotName: str
     startTime: datetime
     endTime: datetime
+
+    @field_validator("pilotName")
+    @classmethod
+    def check_pilot_name(cls, value: str) -> str:
+        return validate_pilot_name(value)
 
 
 class BookingResponse(BaseModel):
@@ -268,6 +206,8 @@ class BookingResponse(BaseModel):
     pilotName: str
     startTime: datetime
     endTime: datetime
+    status: str
+    cancelledAt: datetime | None = None
 
 
 def serialize(row):
@@ -277,6 +217,8 @@ def serialize(row):
         "pilotName": row["pilot_name"],
         "startTime": row["start_time"],
         "endTime": row["end_time"],
+        "status": row["status"],
+        "cancelledAt": row["cancelled_at"],
     }
 
 
@@ -295,67 +237,54 @@ def validate_times(start, end, check_past=True):
 
 
 def find_booking_conflict(db, ship_id, start, end):
+    ship = db.execute(
+        "SELECT refuel_minutes FROM ships WHERE id = ?",
+        (ship_id,),
+    ).fetchone()
+
+    if ship is None:
+        raise HTTPException(404, "Spacecraft not found")
+
+    buffer = timedelta(minutes=buffer_minutes(ship))
+
+    start_utc = start.astimezone(timezone.utc)
+    end_utc = end.astimezone(timezone.utc)
+
     rows = db.execute(
         """
         SELECT start_time, end_time
         FROM bookings
         WHERE ship_id = ?
+          AND status = 'confirmed'
+          AND start_time < ?
+          AND end_time > ?
         ORDER BY start_time
         """,
-        (ship_id,),
+        (
+            ship_id,
+            utc_string(end_utc + buffer),
+            utc_string(start_utc - buffer),
+        ),
     ).fetchall()
-
-    start = start.astimezone(timezone.utc)
-    end = end.astimezone(timezone.utc)
 
     matches = []
 
     for row in rows:
-        existing_start = datetime.fromisoformat(
-            row["start_time"]
-        ).astimezone(timezone.utc)
+        existing_start = datetime.fromisoformat(row["start_time"]).astimezone(
+            timezone.utc
+        )
 
-        existing_end = datetime.fromisoformat(
-            row["end_time"]
-        ).astimezone(timezone.utc)
+        existing_end = datetime.fromisoformat(row["end_time"]).astimezone(timezone.utc)
 
-        if (
-            start < existing_end
-            and end > existing_start
-        ):
-            matches.append(
-                (
-                    "overlap",
-                    existing_start,
-                    existing_end,
-                )
-            )
+        if start_utc < existing_end and end_utc > existing_start:
+            matches.append(("overlap", existing_start, existing_end))
 
-        elif (
-            end <= existing_start
-            and end > existing_start - BUFFER
-        ):
-            matches.append(
-                (
-                    "buffer_before",
-                    existing_start,
-                    existing_end,
-                )
-            )
+        elif end_utc <= existing_start and end_utc > existing_start - buffer:
+            matches.append(("buffer_before", existing_start, existing_end))
 
-        elif (
-            start >= existing_end
-            and start < existing_end + BUFFER
-        ):
-            matches.append(
-                (
-                    "buffer_after",
-                    existing_start,
-                    existing_end,
-                )
-            )
+        elif start_utc >= existing_end and start_utc < existing_end + buffer:
+            matches.append(("buffer_after", existing_start, existing_end))
 
-    # Prefer actual overlaps over buffer-only conflicts.
     matches.sort(
         key=lambda item: (
             item[0] != "overlap",
@@ -366,17 +295,13 @@ def find_booking_conflict(db, ship_id, start, end):
     return matches[0] if matches else None
 
 
-def conflict_message(conflict, ship_name):
+def conflict_message(conflict, ship_name, refuel_minutes):
     reason, start, end = conflict
+    buffer = timedelta(minutes=refuel_minutes)
 
-    date_label = start.astimezone(CENTRAL).strftime(
-        "%b %d, %Y"
-    )
+    date_label = start.astimezone(CENTRAL).strftime("%b %d, %Y")
 
-    window = (
-        f"{start.astimezone(CENTRAL):%H:%M}–"
-        f"{end.astimezone(CENTRAL):%H:%M} CT"
-    )
+    window = f"{start.astimezone(CENTRAL):%H:%M}–{end.astimezone(CENTRAL):%H:%M} CT"
 
     if reason == "overlap":
         return (
@@ -387,25 +312,21 @@ def conflict_message(conflict, ship_name):
         )
 
     if reason == "buffer_before":
-        latest_return = (
-            start - BUFFER
-        ).astimezone(CENTRAL)
+        latest_return = (start - buffer).astimezone(CENTRAL)
 
         return (
             f"Refueling buffer conflict: {ship_name} "
-            "requires 30 minutes of refueling before "
+            f"requires {refuel_minutes} minutes of refueling before "
             f"its {date_label} reservation at {window}. "
             "Your mission must finish by "
             f"{latest_return:%H:%M} CT."
         )
 
-    earliest_launch = (
-        end + BUFFER
-    ).astimezone(CENTRAL)
+    earliest_launch = (end + buffer).astimezone(CENTRAL)
 
     return (
         f"Refueling buffer conflict: {ship_name} "
-        "requires 30 minutes of refueling after "
+        f"requires {refuel_minutes} minutes of refueling after "
         f"its {date_label} reservation at {window}. "
         "The next mission can start at "
         f"{earliest_launch:%H:%M} CT."
@@ -416,59 +337,78 @@ def conflict_message(conflict, ship_name):
 def ships():
     with connection() as db:
         return [
-            dict(row)
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "refuelMinutes": row["refuel_minutes"],
+            }
             for row in db.execute(
-                "SELECT id, name FROM ships ORDER BY id"
+                """
+                SELECT id, name, refuel_minutes
+                FROM ships
+                ORDER BY id
+                """
             )
         ]
 
 
 @app.get("/api/availability")
 def availability(
-    shipId: int = Query(gt=0),
+    shipId: int = Query(gt=0, le=2147483647),
     day: date = Query(alias="date"),
 ):
     opening, closing = day_bounds(day)
+    opening_utc = opening.astimezone(timezone.utc)
+    closing_utc = closing.astimezone(timezone.utc)
 
     with connection() as db:
-        exists = db.execute(
-            "SELECT 1 FROM ships WHERE id=?",
+        ship = db.execute(
+            """
+            SELECT refuel_minutes
+            FROM ships
+            WHERE id = ?
+            """,
             (shipId,),
         ).fetchone()
 
-        if not exists:
+        if ship is None:
             raise HTTPException(
                 404,
-                "Spacecraft not found: "
-                f"No spacecraft exists with ID {shipId}.",
+                f"Spacecraft not found: No spacecraft exists with ID {shipId}.",
             )
 
+        minutes = buffer_minutes(ship)
+        buffer = timedelta(minutes=minutes)
+
+        # Fetch only reservations capable of blocking this day.
         rows = db.execute(
             """
             SELECT start_time, end_time
             FROM bookings
-            WHERE ship_id=?
+            WHERE ship_id = ?
+              AND status = 'confirmed'
+              AND start_time < ?
+              AND end_time > ?
             ORDER BY start_time
             """,
-            (shipId,),
+            (
+                shipId,
+                utc_string(closing_utc + buffer),
+                utc_string(opening_utc - buffer),
+            ),
         ).fetchall()
 
     blocked = []
 
     for row in rows:
-        start = max(
-            opening.astimezone(timezone.utc),
-            datetime.fromisoformat(
-                row["start_time"]
-            ).astimezone(timezone.utc) - BUFFER,
+        mission_start = datetime.fromisoformat(row["start_time"]).astimezone(
+            timezone.utc
         )
 
-        end = min(
-            closing.astimezone(timezone.utc),
-            datetime.fromisoformat(
-                row["end_time"]
-            ).astimezone(timezone.utc) + BUFFER,
-        )
+        mission_end = datetime.fromisoformat(row["end_time"]).astimezone(timezone.utc)
+
+        start = max(opening_utc, mission_start - buffer)
+        end = min(closing_utc, mission_end + buffer)
 
         if start >= end:
             continue
@@ -484,18 +424,15 @@ def availability(
     return {
         "shipId": shipId,
         "date": day.isoformat(),
+        "refuelMinutes": minutes,
         "opensAt": opening.isoformat(),
         "closesAt": closing.isoformat(),
         "unavailable": [
             {
-                "startTime": a.astimezone(
-                    CENTRAL
-                ).isoformat(),
-                "endTime": b.astimezone(
-                    CENTRAL
-                ).isoformat(),
+                "startTime": start.astimezone(CENTRAL).isoformat(),
+                "endTime": end.astimezone(CENTRAL).isoformat(),
             }
-            for a, b in blocked
+            for start, end in blocked
         ],
     }
 
@@ -523,34 +460,27 @@ def bookings():
     status_code=201,
     response_model=BookingResponse,
     responses={
-        404: {
-            "description": "Spacecraft does not exist"
-        },
+        404: {"description": "Spacecraft does not exist"},
         409: {
             "description": (
-                "Overlapping mission or 30-minute "
-                "refueling buffer violation"
+                "Overlapping mission or spacecraft-specific refueling buffer violation"
             )
         },
         422: {
             "description": (
-                "Invalid booking details, past launch, "
-                "duration, or operating hours"
+                "Invalid booking details, past launch, duration, or operating hours"
             )
         },
-        503: {
-            "description": "Database temporarily unavailable"
-        },
+        503: {"description": "Database temporarily unavailable"},
     },
 )
 def create_booking(payload: BookingRequest):
-    name = payload.pilotName.strip()
+    name = payload.pilotName
 
     if not name:
         raise HTTPException(
             422,
-            "Pilot name validation error: "
-            "Pilot name is required.",
+            "Pilot name validation error: Pilot name is required.",
         )
 
     validate_times(
@@ -565,7 +495,11 @@ def create_booking(payload: BookingRequest):
                 db.execute("BEGIN IMMEDIATE")
 
                 ship = db.execute(
-                    "SELECT name FROM ships WHERE id=?",
+                    """
+                    SELECT name, refuel_minutes
+                    FROM ships
+                    WHERE id = ?
+                    """,
                     (payload.shipId,),
                 ).fetchone()
 
@@ -590,10 +524,11 @@ def create_booking(payload: BookingRequest):
                         conflict_message(
                             conflict,
                             ship["name"],
+                            buffer_minutes(ship),
                         ),
                     )
 
-                # Recheck after obtaining the write lock.
+                # Lock contention may have delayed the request past launch time.
                 validate_times(
                     payload.startTime,
                     payload.endTime,
@@ -635,8 +570,87 @@ def create_booking(payload: BookingRequest):
         if "locked" in message or "busy" in message:
             raise HTTPException(
                 503,
-                "Booking service is temporarily busy. "
-                "Please try again.",
+                "Booking service is temporarily busy. Please try again.",
             ) from exc
 
+        raise
+
+
+@app.post(
+    "/api/bookings/{booking_id}/cancel",
+    response_model=BookingResponse,
+    responses={
+        404: {"description": "Booking not found"},
+        409: {"description": ("Booking already cancelled or mission has started")},
+        503: {"description": "Database temporarily unavailable"},
+    },
+)
+def cancel_booking(booking_id: int):
+    if booking_id <= 0:
+        raise HTTPException(422, "Invalid booking ID")
+
+    try:
+        with connection() as db:
+            try:
+                db.execute("BEGIN IMMEDIATE")
+
+                row = db.execute(
+                    "SELECT * FROM bookings WHERE id = ?",
+                    (booking_id,),
+                ).fetchone()
+
+                if row is None:
+                    raise HTTPException(
+                        404,
+                        f"Reservation #{booking_id} was not found.",
+                    )
+
+                if row["status"] == "cancelled":
+                    raise HTTPException(
+                        409,
+                        f"Reservation #{booking_id} is already cancelled.",
+                    )
+
+                now = datetime.now(timezone.utc)
+                launch = datetime.fromisoformat(row["start_time"]).astimezone(
+                    timezone.utc
+                )
+
+                if launch <= now:
+                    raise HTTPException(
+                        409,
+                        "This mission has already started and cannot be cancelled.",
+                    )
+
+                cancelled_at = utc_string(now.replace(microsecond=0))
+
+                db.execute(
+                    """
+                    UPDATE bookings
+                    SET status = 'cancelled',
+                        cancelled_at = ?
+                    WHERE id = ?
+                      AND status = 'confirmed'
+                    """,
+                    (cancelled_at, booking_id),
+                )
+
+                updated = db.execute(
+                    "SELECT * FROM bookings WHERE id = ?",
+                    (booking_id,),
+                ).fetchone()
+
+                db.commit()
+                return serialize(updated)
+
+            except Exception:
+                db.rollback()
+                raise
+
+    except sqlite3.OperationalError as exc:
+        if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+            raise HTTPException(
+                503,
+                "Booking service is temporarily busy. Please try again.",
+            ) from exc
         raise

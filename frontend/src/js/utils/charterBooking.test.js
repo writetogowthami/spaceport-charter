@@ -20,10 +20,25 @@ describe("Booking payload construction", () => {
     expect(result.shipId).toBe(2);
   });
 
-  it("trims and capitalizes the pilot name", () => {
+  it("trims the pilot name", () => {
     const result = buildBookingPayload(base);
 
-    expect(result.pilotName).toBe("Alex Nova");
+    expect(result.pilotName).toBe("alex nova");
+  });
+
+  it("uses shared pilot-name trimming without changing capitalization", () => {
+    const payload = buildBookingPayload({
+      shipId: 1,
+      pilotName: "\u0085de la Cruz\uFEFF",
+      bookingMode: "custom",
+      date: "2030-01-15",
+      selected: null,
+      duration: 60,
+      customStartMinutes: 847,
+      customEndMinutes: 884,
+    });
+
+    expect(payload.pilotName).toBe("de la Cruz");
   });
 
   it("creates correct Quick Selection timestamps", () => {
@@ -98,5 +113,38 @@ describe("Booking payload construction", () => {
     expect(new Date(result.endTime).getTime() - new Date(result.startTime).getTime()).toBe(
       120 * 60000
     );
+  });
+});
+
+describe("buildBookingPayload", () => {
+  it("preserves pilot capitalization and trims whitespace", () => {
+    const payload = buildBookingPayload({
+      shipId: 1,
+      pilotName: "  McDonald  ",
+      bookingMode: "quick",
+      date: "2028-01-10",
+      selected: 540,
+      duration: 60,
+    });
+
+    expect(payload.pilotName).toBe("McDonald");
+    expect(payload.shipId).toBe(1);
+    expect(payload.startTime).toBe("2028-01-10T15:00:00.000Z");
+    expect(payload.endTime).toBe("2028-01-10T16:00:00.000Z");
+  });
+
+  it("uses exact Central times for custom bookings", () => {
+    const payload = buildBookingPayload({
+      shipId: 2,
+      pilotName: "de la Cruz",
+      bookingMode: "custom",
+      date: "2028-07-10",
+      customStartMinutes: 14 * 60 + 7,
+      customEndMinutes: 14 * 60 + 44,
+    });
+
+    expect(payload.pilotName).toBe("de la Cruz");
+    expect(payload.startTime).toBe("2028-07-10T19:07:00.000Z");
+    expect(payload.endTime).toBe("2028-07-10T19:44:00.000Z");
   });
 });

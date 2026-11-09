@@ -99,6 +99,36 @@ describe("useCharterAvailability", () => {
     expect(result.current.availabilityIsCurrent).toBe(true);
   });
 
+  it("requires a fresh response when returning to a previously loaded spacecraft", async () => {
+    const second = deferred();
+    const returned = deferred();
+    api.availability
+      .mockResolvedValueOnce({ unavailableWindows: [] })
+      .mockReturnValueOnce(second.promise)
+      .mockReturnValueOnce(returned.promise);
+
+    const { result, rerender } = renderHook(
+      ({ shipId }) => useCharterAvailability(shipId, "2026-11-10", 0),
+      { initialProps: { shipId: 1 } }
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ shipId: 2 });
+    rerender({ shipId: 1 });
+    expect(result.current.availabilityIsCurrent).toBe(false);
+    expect(result.current.loading).toBe(true);
+    await act(async () => {
+      second.resolve({ unavailableWindows: [] });
+      await second.promise;
+    });
+    expect(result.current.availabilityIsCurrent).toBe(false);
+    await act(async () => {
+      returned.resolve({ unavailableWindows: [{ start: "10:00", end: "11:00" }] });
+      await returned.promise;
+    });
+    expect(result.current.availabilityIsCurrent).toBe(true);
+    expect(result.current.windows).toEqual([{ start: 600, end: 660 }]);
+  });
+
   it("requires fresh availability after a reload", async () => {
     const second = deferred();
 

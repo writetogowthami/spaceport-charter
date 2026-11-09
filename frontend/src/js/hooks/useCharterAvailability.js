@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
-import { parseAvailability } from "../utils/schedule";
+import { isValidDate, parseAvailability } from "../utils/schedule";
 
 export function useCharterAvailability(shipId, date, reload) {
-  const availabilityKey = `${shipId}:${date}:${reload}`;
+  const availabilityKey = useMemo(() => ({ shipId, date, reload }), [shipId, date, reload]);
+  const canRequest = Number.isInteger(Number(shipId)) && Number(shipId) > 0 && isValidDate(date);
 
   const [result, setResult] = useState({
     key: null,
@@ -12,6 +13,7 @@ export function useCharterAvailability(shipId, date, reload) {
   });
 
   useEffect(() => {
+    if (!canRequest) return;
     let active = true;
 
     api
@@ -40,13 +42,13 @@ export function useCharterAvailability(shipId, date, reload) {
     return () => {
       active = false;
     };
-  }, [shipId, date, reload]);
+  }, [shipId, date, reload, availabilityKey, canRequest]);
 
-  const availabilityIsCurrent = result.key === availabilityKey;
+  const availabilityIsCurrent = canRequest && result.key === availabilityKey;
 
   return {
     windows: availabilityIsCurrent ? result.windows : [],
-    loading: !availabilityIsCurrent,
+    loading: canRequest && !availabilityIsCurrent,
     error: availabilityIsCurrent ? result.error : "",
     availabilityIsCurrent,
   };

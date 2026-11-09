@@ -1,6 +1,4 @@
-/* =====================================================
-   FLIGHT AVAILABILITY
-   ===================================================== */
+/* Flight availability */
 
 .hours {
   display: flex;
@@ -149,9 +147,7 @@
   font-size: 14px;
 }
 
-/* =====================================================
-   LAUNCH WINDOW PANEL
-   ===================================================== */
+/* Launch window panel */
 
 .slots-panel {
   margin-top: 16px;
@@ -173,9 +169,7 @@
   font-weight: 700;
 }
 
-/* =====================================================
-   QUICK SELECTION / CUSTOM TIME SWITCH
-   ===================================================== */
+/* Quick selection / custom time switch */
 
 .booking-mode-switch {
   display: inline-flex;
@@ -223,9 +217,7 @@
   outline-offset: 2px;
 }
 
-/* =====================================================
-   LAUNCH MODE CONTENT
-   ===================================================== */
+/* Launch mode content */
 
 .launch-mode-content {
   margin-top: 14px;
@@ -278,19 +270,10 @@
 /* Quick selection grows naturally with the full schedule. */
 
 .launch-mode-scroll {
-  max-height: 620px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px 8px 12px 0;
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
+  padding: 4px 0 12px;
 }
 
-.launch-mode-scroll:focus-within {
-  scroll-behavior: auto;
-}
-
-/* Custom time occupies same height */
+/* Custom-time content */
 
 .launch-mode-custom {
   display: flex;
@@ -305,15 +288,11 @@
   margin-top: 0;
 }
 
-/* Mission summary stays in same position */
-
 .slots-panel .mission-summary {
   margin-top: 16px;
 }
 
-/* =====================================================
-   LAUNCH SLOT LEGEND
-   ===================================================== */
+/* Launch slot legend */
 
 .legend {
   display: flex;
@@ -339,7 +318,7 @@
   font-size: 13px;
 }
 
-/* Exact visual match to slot states */
+/* Legend swatches use the launch-slot state palette. */
 
 .legend .available-dot,
 .legend .selected-dot,
@@ -361,9 +340,7 @@
   background: var(--unavailable-dot);
 }
 
-/* =====================================================
-   LAUNCH SLOT GRID
-   ===================================================== */
+/* Launch slot grid */
 
 .slot-section {
   margin-bottom: 17px;
@@ -396,7 +373,8 @@
 }
 
 .slot {
-  height: 61px;
+  min-height: 64px;
+  padding: 8px 6px;
 
   display: flex;
   flex-direction: column;
@@ -424,6 +402,12 @@
 .slot small {
   color: #37745b;
   font-size: 12px;
+  line-height: 1.3;
+}
+
+.slot-time-range {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* AVAILABLE */
@@ -598,7 +582,7 @@
   }
 }
 
-/* Mission summary — preserve the original layout */
+/* Mission-summary time typography */
 
 .review-details .review-window .time-range-hours {
   font-size: inherit;

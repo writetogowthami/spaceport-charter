@@ -1,32 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
-import { DURATIONS, SLOTS, dateInCentral, dateLabel, centralToISO, hhmm } from "../utils/schedule";
+import {
+  DURATIONS,
+  SLOTS,
+  dateInCentral,
+  dateLabel,
+  centralToISO,
+  hhmm,
+  isValidDate,
+} from "../utils/schedule";
 import SectionHeading from "../components/SectionHeading";
 import Confirmation from "../components/Confirmation";
 import TimeRange from "../components/TimeRange";
 import {
   normalizeTimeInput,
   normalizeCompletedTime,
-  capitalizePilotName,
   isValidPilotName,
 } from "../utils/charterInputs";
 import { isQuickSlotAvailable, parseTime, validateCustomTime } from "../utils/charterAvailability";
 import { useCharterAvailability } from "../hooks/useCharterAvailability";
 import { useCharterBooking } from "../hooks/useCharterBooking";
 
-export default function Charter({
-  ships,
-  shipsReady = false,
-  onBooked,
-  onFleet,
-}) {
+export default function Charter({ ships, shipsReady = false, onBooked, onFleet }) {
   const [shipId, setShipId] = useState(1);
   const [date, setDate] = useState(dateInCentral());
+  const dateIsValid = isValidDate(date);
   const [duration, setDuration] = useState(60);
   const [pilotName, setPilotName] = useState("");
   const [selected, setSelected] = useState(null);
 
-  // Quick selection keeps the existing half-hour slot grid.
-  // Custom time allows exact launch and return times.
   const [bookingMode, setBookingMode] = useState("quick");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -48,6 +49,7 @@ export default function Charter({
   );
 
   const ship = ships.find((s) => Number(s.id) === Number(shipId));
+  const refuelMinutes = ship?.refuelMinutes ?? 30;
 
   useEffect(() => {
     setSelected(null);
@@ -66,10 +68,11 @@ export default function Charter({
   }, []);
 
   useEffect(() => {
-    if (bookingError) {
-      bookingErrorRef.current?.focus();
+    if (bookingError && !loading) {
+      bookingErrorRef.current?.focus({ preventScroll: true });
+      bookingErrorRef.current?.scrollIntoView?.({ block: "center", behavior: "instant" });
     }
-  }, [bookingError]);
+  }, [bookingError, loading]);
 
   const customStartMinutes = parseTime(customStart);
   const customEndMinutes = parseTime(customEnd);
@@ -125,14 +128,14 @@ export default function Charter({
   const pilotIsValid = isValidPilotName(pilotName);
 
   const canSubmit =
-  shipsReady &&
-  Boolean(ship) &&
-  pilotIsValid &&
-  timeCanSubmit &&
-  availabilityIsCurrent &&
-  !loading &&
-  !error &&
-  !submitting;
+    shipsReady &&
+    Boolean(ship) &&
+    pilotIsValid &&
+    timeCanSubmit &&
+    availabilityIsCurrent &&
+    !loading &&
+    !error &&
+    !submitting;
 
   function submit(event) {
     event.preventDefault();
@@ -214,7 +217,13 @@ export default function Charter({
               <label className="field">
                 <span>SPACECRAFT</span>
 
-                <select value={shipId} onChange={(e) => setShipId(Number(e.target.value))}>
+                <select
+                  value={shipId}
+                  onChange={(e) => {
+                    setShipId(Number(e.target.value));
+                    setBookingError("");
+                  }}
+                >
                   {ships.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -231,7 +240,10 @@ export default function Charter({
                     type="date"
                     min={dateInCentral()}
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      setBookingError("");
+                    }}
                     required
                   />
                 </label>
@@ -268,7 +280,7 @@ export default function Charter({
                   type="text"
                   value={pilotName}
                   onChange={(e) => {
-                    setPilotName(capitalizePilotName(e.target.value));
+                    setPilotName(e.target.value);
                     setBookingError("");
                   }}
                   placeholder="Enter pilot name"
@@ -303,15 +315,21 @@ export default function Charter({
               </div>
 
               <div className="availability-heading">
-                <strong>Reserved and blocked times</strong>
+                <strong>Spacecraft blocked periods</strong>
                 <span className="availability-date">{dateLabel(date)}</span>
               </div>
 
               <p className="muted tiny">
-                Includes the required 30-minute refueling buffer before and after each reservation.
+                Includes the required {refuelMinutes}-minute refueling separation for{" "}
+                {ship?.name ?? "this spacecraft"}. This is a fleet safety policy and cannot be
+                reduced during booking.
               </p>
 
-              {loading ? (
+              {!dateIsValid ? (
+                <div className="empty-state" role="status">
+                  Choose a mission date to view blocked periods.
+                </div>
+              ) : loading ? (
                 <div className="empty-state" role="status" aria-live="polite">
                   Loading flight availability…
                 </div>
@@ -329,7 +347,7 @@ export default function Charter({
                   </div>
                 </div>
               ) : (
-                <div className="blocked-list" aria-label="Unavailable flight windows">
+                <div className="blocked-list" aria-label="Spacecraft blocked periods">
                   {windows.map((w, i) => (
                     <div
                       className="blocked-window"
@@ -354,8 +372,16 @@ export default function Charter({
           <section className="panel slots-panel" aria-busy={loading}>
             <div className="between">
               <SectionHeading
-                title="Select launch window"
-                subtitle="Choose a launch time. Your return time is calculated from your mission duration."
+                title={
+                  bookingMode === "quick"
+                    ? `Available starts for a ${duration}-minute mission`
+                    : "Select custom mission times"
+                }
+                subtitle={
+                  bookingMode === "quick"
+                    ? "Times show launch–return in Central Time. Your entire mission must fit outside the spacecraft blocked periods."
+                    : "Choose your exact launch and return times. Your entire mission must fit outside the spacecraft blocked periods."
+                }
               />
 
               <span className="date-chip">{dateLabel(date)} · CT</span>
@@ -415,11 +441,13 @@ export default function Charter({
 
                     <div className="launch-availability-info">
                       <strong role="status" aria-live="polite">
-                        {loading
-                          ? "Checking availability…"
-                          : error
-                            ? "Availability unavailable"
-                            : `${availableCount} of ${SLOTS.length} launch starts available`}
+                        {!dateIsValid
+                          ? "Choose a mission date"
+                          : loading
+                            ? "Checking availability…"
+                            : error
+                              ? "Availability unavailable"
+                              : `${availableCount} of ${SLOTS.length} launch starts available`}
                       </strong>
 
                       <span className="launch-info-wrapper">
@@ -439,13 +467,17 @@ export default function Charter({
                         >
                           Gray launch times cannot accommodate the selected mission duration. This
                           may be due to an existing reservation, refueling buffer, past time, or
-                          closing time. See Schedule availability for blocked intervals
+                          closing time. A launch before a blocked period can still be unavailable if
+                          the mission would overlap it. Refueling buffers are already included in
+                          Spacecraft blocked periods.
                         </span>
                       </span>
                     </div>
                   </div>
 
-                  {loading ? (
+                  {!dateIsValid ? (
+                    <p className="schedule-message">Choose a mission date to see launch windows.</p>
+                  ) : loading ? (
                     <p className="schedule-message">Loading launch windows…</p>
                   ) : error ? (
                     <div className="schedule-message">
@@ -492,26 +524,33 @@ export default function Charter({
                                   const timePassed =
                                     new Date(centralToISO(date, s)).getTime() <= now;
                                   const isSelected = selected === s && available;
+                                  const returnTime = hhmm((s + duration) % 1440);
+                                  const returnsNextDay = s + duration >= 1440;
+                                  const status = isSelected
+                                    ? "Selected"
+                                    : available
+                                      ? "Available"
+                                      : timePassed
+                                        ? "Time passed"
+                                        : s + duration > 1320
+                                          ? "Past closing"
+                                          : "Unavailable";
                                   return (
                                     <button
                                       type="button"
                                       key={s}
                                       disabled={!available}
                                       aria-pressed={isSelected}
+                                      aria-label={`${hhmm(s)} to ${returnTime} Central Time${returnsNextDay ? ", return next day" : ""}, ${status}`}
                                       className={`slot ${isSelected ? "selected" : available ? "available" : "unavailable"}`}
                                       onClick={() => setSelected(s)}
                                     >
-                                      <strong>{hhmm(s)}</strong>
+                                      <strong className="slot-time-range">
+                                        {hhmm(s)} – {returnTime}
+                                      </strong>
                                       <small>
-                                        {isSelected
-                                          ? "Selected"
-                                          : available
-                                            ? "Available"
-                                            : timePassed
-                                              ? "Time passed"
-                                              : s + duration > 1320
-                                                ? "Past closing"
-                                                : "Unavailable"}
+                                        {status}
+                                        {returnsNextDay ? " · +1 day" : ""}
                                       </small>
                                     </button>
                                   );
