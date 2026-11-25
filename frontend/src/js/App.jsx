@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api } from "../api";
-import { asArray } from "./utils/schedule";
-import Header from "./components/Header";
-import Charter from "./pages/Charter";
-import Fleet from "./pages/Fleet";
+import { api } from "./shared/services/api";
+import { asArray } from "./shared/utils/schedule";
+import Header from "./app/components/Header";
+import Charter from "./features/charter/Charter";
+import Fleet from "./features/fleet/Fleet";
 
 export default function App() {
   const [page, setPage] = useState("charter");

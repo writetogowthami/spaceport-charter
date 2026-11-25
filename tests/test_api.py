@@ -1281,3 +1281,67 @@ def test_direct_insert_respects_exact_buffer_boundary():
         ).status_code
         == 201
     )
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/api/ships", "/api/bookings", "/api/availability?shipId=1&date=2027-01-02"],
+)
+def test_locked_reads_return_structured_unavailable(monkeypatch, path):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def locked_connection():
+        raise sqlite3.OperationalError("database is locked")
+        yield
+
+    monkeypatch.setattr(main, "connection", locked_connection)
+    response = client.get(path)
+    assert response.status_code == 503
+    assert response.headers["content-type"].startswith("application/json")
+    assert "temporarily unavailable" in response.json()["detail"]
+
+
+def test_readonly_write_returns_structured_unavailable(monkeypatch):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def readonly_connection():
+        raise sqlite3.OperationalError("attempt to write a readonly database")
+        yield
+
+    monkeypatch.setattr(main, "connection", readonly_connection)
+    response = post("2027-01-02T09:00:00-06:00", "2027-01-02T10:00:00-06:00")
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Booking service is temporarily unavailable. Please try again."
+    }
+
+
+def test_unexpected_sqlite_error_not_disguised_as_unavailable(monkeypatch):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def broken_connection():
+        raise sqlite3.OperationalError("no such table: ships")
+        yield
+
+    monkeypatch.setattr(main, "connection", broken_connection)
+    response = client.get("/api/ships")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Internal Server Error"}
+
+
+def test_sqlite_error_code_takes_precedence_over_message(monkeypatch):
+    from contextlib import contextmanager
+
+    @contextmanager
+    def broken_connection():
+        with sqlite3.connect(":memory:") as db:
+            db.execute('SELECT * FROM "database is locked"')
+            yield db
+
+    monkeypatch.setattr(main, "connection", broken_connection)
+    response = client.get("/api/ships")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Internal Server Error"}

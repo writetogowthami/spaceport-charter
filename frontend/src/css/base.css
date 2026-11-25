@@ -35,8 +35,8 @@
   --available-dot: #39936b;
 
   /* Shared orange palette */
-  --orange: #df6f16;
-  --orange-hover: #c75b0e;
+  --orange: #b9500b;
+  --orange-hover: #a84508;
   --orange-border: #b9500b;
   --orange-focus: rgba(223, 111, 22, 0.22);
 
@@ -331,7 +331,7 @@ select:focus-visible {
 .field input::placeholder,
 .filters input::placeholder,
 .custom-time-fields input::placeholder {
-  color: #748792;
+  color: #566b76;
   opacity: 1;
 }
 

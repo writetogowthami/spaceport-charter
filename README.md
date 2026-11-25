@@ -29,6 +29,8 @@ All displayed mission dates and times use **America/Chicago (Central Time)**, in
 **Architecture path (developers):** [High-level design](#high-level-design) → [Low-level design](#low-level-design) → [Booking rules](#booking-rules-and-availability) → [API reference](#api-reference).  
 **Operations and safety:** [Final acceptance record](#final-acceptance-record) → [Database safety](#database-safety) → [Troubleshooting](#troubleshooting) → [Production limitations](#production-build-and-limitations).
 
+**Current local/demo candidate — November 18, 2026:** [Release record](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.md), [source manifest](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.manifest.json), [tested environment](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.environment.json), and [fresh verification output](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.verification.txt). The candidate includes uncommitted changes; HEAD alone does not identify it. No release commit or tag has been created. Production approval and ten device-accessibility checks remain outside the accepted scope.
+
 <details>
 <summary><strong>Full table of contents</strong></summary>
 
@@ -283,7 +285,7 @@ flowchart TB
 | Mission entry and selection | `Charter.jsx` | Collects spacecraft/date/pilot and supports Quick or Custom Time |
 | Availability freshness | `useCharterAvailability` | Keys responses by spacecraft/date/reload; stale data cannot authorize submission |
 | Submission lifecycle | `useCharterBooking` | Prevents duplicate clicks, handles confirmation, errors and HTTP 409 recovery |
-| Local scheduling calculations | `utils/` | Pure Central Time, interval, input and payload operations |
+| Local scheduling calculations | `shared/utils/schedule.js`, `features/charter/utils/` | Shared Central Time helpers; Charter-owned input, availability and payload operations |
 | Fleet reporting | `Fleet.jsx` | Client-side search/filter/sort, metrics and daily timeline |
 | API transport | `api.js` | Same-origin `/api`, JSON handling and HTTP errors |
 | Booking authority | `backend/main.py` | Validates requests and serializes conflicting writes |
@@ -506,8 +508,8 @@ For the **same spacecraft with the default policy**, a mission ending at **10:00
 | Load spacecraft | `GET /api/ships` | Spacecraft list for booking and Fleet | Initial-load Retry |
 | Read availability | `shipId`, Central `date` | Buffered, merged blocked intervals | Loading/error state; stale responses ignored |
 | Read Fleet | `GET /api/bookings` | Booking records; filters and sorting applied in browser | Preserve last loaded results on refresh failure |
-| Create booking | `shipId`, `pilotName`, timezone-aware start/end | HTTP 201 with booking details | 409 refresh; 422 invalid; 503 contention; uncertain network outcome requires Fleet check |
-| Cancel booking | `POST /api/bookings/{id}/cancel` | HTTP 200 with cancelled booking; mission and buffer released | 404 unknown; 409 already cancelled/started; 503 contention |
+| Create booking | `shipId`, `pilotName`, timezone-aware start/end | HTTP 201 with booking details | 409 refresh; 422 invalid; 503 database availability failure; uncertain network outcome requires Fleet check |
+| Cancel booking | `POST /api/bookings/{id}/cancel` | HTTP 200 with cancelled booking; mission and buffer released | 404 unknown; 409 already cancelled/started; 503 database availability failure |
 
 For exact field names, examples and status codes, see the [API reference](#api-reference). For edge conditions, see [Booking rules and availability](#booking-rules-and-availability).
 
@@ -516,6 +518,8 @@ For exact field names, examples and status codes, see the [API reference](#api-r
 ## Project structure
 
 The source tree below matches the current `spaceport-charter` checkout. Tests beside frontend modules are listed explicitly; backend regression tests live in the root `tests/` directory. Generated files, local databases and caches are listed separately below.
+
+Frontend ownership and dependency rules are documented in [frontend/ARCHITECTURE.md](frontend/ARCHITECTURE.md). Application code composes features and shared modules; features own their UI and booking behavior; shared modules must not depend on application or feature code. Features must not import another feature's private modules. Keep styles in `frontend/src/css/`.
 
 ```text
 spaceport-charter/
@@ -527,6 +531,12 @@ spaceport-charter/
 │   ├── refueling_policy.py                             # Refueling policy migration, indexes and guards
 │   ├── requirements.txt                                # Backend and test dependencies
 │   └── seed.json                                       # Five spacecraft and 3,000 sample bookings
+├── docs/
+│   └── releases/
+│       ├── LOCAL_DEMO_RELEASE_2026-11-18.md             # Scoped acceptance and release/recovery procedure
+│       ├── LOCAL_DEMO_RELEASE_2026-11-18.environment.json
+│       ├── LOCAL_DEMO_RELEASE_2026-11-18.manifest.json  # Exact working-tree file hashes; excludes itself
+│       └── LOCAL_DEMO_RELEASE_2026-11-18.verification.txt
 ├── frontend/
 │   ├── public/
 │   │   └── spaceport-icon.svg                          # Shared header logo and favicon
@@ -541,41 +551,63 @@ spaceport-charter/
 │   │   │   ├── notifications.css                       # Notification styles imported by main.jsx
 │   │   │   └── responsive.css
 │   │   ├── js/
-│   │   │   ├── components/
-│   │   │   │   ├── Confirmation.jsx
-│   │   │   │   ├── Confirmation.test.jsx
-│   │   │   │   ├── Header.jsx
-│   │   │   │   ├── Notification.jsx
-│   │   │   │   ├── Notification.test.jsx
-│   │   │   │   ├── SectionHeading.jsx
-│   │   │   │   └── TimeRange.jsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useCharterAvailability.js
-│   │   │   │   ├── useCharterAvailability.test.jsx
-│   │   │   │   ├── useCharterBooking.js
-│   │   │   │   └── useCharterBooking.test.jsx
-│   │   │   ├── pages/
-│   │   │   │   ├── Charter.jsx
-│   │   │   │   ├── Charter.test.jsx
-│   │   │   │   ├── CharterSubmission.test.jsx
-│   │   │   │   ├── Fleet.jsx
-│   │   │   │   └── Fleet.test.jsx
-│   │   │   ├── utils/
-│   │   │   │   ├── charterAvailability.js
-│   │   │   │   ├── charterAvailability.test.js
-│   │   │   │   ├── charterBooking.js
-│   │   │   │   ├── charterBooking.test.js
-│   │   │   │   ├── charterInputs.js
-│   │   │   │   ├── charterInputs.test.js
-│   │   │   │   ├── customTimeValidation.test.js
-│   │   │   │   ├── pilotNamePolicy.js
-│   │   │   │   ├── pilotNamePolicy.test.js
-│   │   │   │   ├── schedule.js
-│   │   │   │   └── schedule.test.js
+│   │   │   ├── app/
+│   │   │   │   └── components/
+│   │   │   │       └── Header.jsx
+│   │   │   ├── features/
+│   │   │   │   ├── charter/
+│   │   │   │   │   ├── Charter.jsx
+│   │   │   │   │   ├── Charter.test.jsx
+│   │   │   │   │   ├── CharterSubmission.test.jsx
+│   │   │   │   │   ├── components/
+│   │   │   │   │   │   ├── Confirmation.jsx
+│   │   │   │   │   │   ├── Confirmation.test.jsx
+│   │   │   │   │   │   └── SectionHeading.jsx
+│   │   │   │   │   ├── constants/
+│   │   │   │   │   │   ├── bookingOptions.js
+│   │   │   │   │   │   └── bookingOptions.test.js
+│   │   │   │   │   ├── hooks/
+│   │   │   │   │   │   ├── useCharterAvailability.js
+│   │   │   │   │   │   ├── useCharterAvailability.test.jsx
+│   │   │   │   │   │   ├── useCharterBooking.js
+│   │   │   │   │   │   └── useCharterBooking.test.jsx
+│   │   │   │   │   └── utils/
+│   │   │   │   │       ├── charterAvailability.js
+│   │   │   │   │       ├── charterAvailability.test.js
+│   │   │   │   │       ├── charterBooking.js
+│   │   │   │   │       ├── charterBooking.test.js
+│   │   │   │   │       ├── charterInputs.js
+│   │   │   │   │       ├── charterInputs.test.js
+│   │   │   │   │       ├── customTimeValidation.test.js
+│   │   │   │   │       ├── pilotNamePolicy.js
+│   │   │   │   │       └── pilotNamePolicy.test.js
+│   │   │   │   └── fleet/
+│   │   │   │       ├── Fleet.jsx
+│   │   │   │       ├── Fleet.test.jsx
+│   │   │   │       ├── components/
+│   │   │   │       │   ├── FleetBookingRow.jsx
+│   │   │   │       │   ├── FleetFilters.jsx
+│   │   │   │       │   ├── FleetTimeline.jsx
+│   │   │   │       │   └── FleetTimeline.test.jsx
+│   │   │   │       └── hooks/
+│   │   │   │           ├── useFleetBookings.js
+│   │   │   │           ├── useFleetBookings.test.jsx
+│   │   │   │           ├── useFleetDerivedData.js
+│   │   │   │           └── useFleetDerivedData.test.jsx
+│   │   │   ├── shared/
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── Notification.jsx
+│   │   │   │   │   ├── Notification.test.jsx
+│   │   │   │   │   └── TimeRange.jsx
+│   │   │   │   ├── services/
+│   │   │   │   │   ├── api.js
+│   │   │   │   │   └── api.test.js
+│   │   │   │   └── utils/
+│   │   │   │       ├── schedule.js
+│   │   │   │       └── schedule.test.js
 │   │   │   └── App.jsx                                 # Navigation, spacecraft loading and page focus
-│   │   ├── api.js                                      # API transport and error handling
-│   │   ├── api.test.js
 │   │   └── main.jsx                                    # React entry point and stylesheet imports
+│   ├── ARCHITECTURE.md                                 # Frontend ownership and dependency rules
 │   ├── .prettierrc.json                                # Frontend formatting rules
 │   ├── index.html                                      # HTML entry point, title and favicon
 │   ├── package-lock.json                               # Locked npm dependency versions
@@ -677,7 +709,10 @@ This example uses a January Central offset. Do not reuse `-06:00` blindly for su
 | 404 | Unknown spacecraft or cancellation target. |
 | 409 | Booking overlap/insufficient refueling gap, or cancellation of an already cancelled/started reservation. |
 | 422 | Invalid request, timezone/precision, pilot, duration, hours, or past launch. |
-| 503 | Database temporarily busy due to write contention. |
+| 500 | Unexpected SQLite operational error; generic JSON `detail`, with diagnostics retained server-side. |
+| 503 | Recognized SQLite availability failure, including locks, read-only storage and unavailable database paths; safe JSON `detail`. Existing busy-write feedback is preserved. |
+
+OPS-001 uses authoritative SQLite error names before its message fallback. A schema error does not become a 503 merely because an object name contains “database is locked.” Disk-full/I/O error families are recognized, but physical disk-full/device-I/O failures were not reproduced. See the [local/demo release record](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.md) for the tested scope.
 
 Use [Swagger UI](http://127.0.0.1:8000/docs) to inspect schemas. Read-only checks: [ships](http://127.0.0.1:8000/api/ships) and [bookings](http://127.0.0.1:8000/api/bookings). Sending a POST through Swagger creates data in the selected database.
 
@@ -708,7 +743,19 @@ On Windows PowerShell, use `backend\.venv\Scripts\python.exe -m pytest -q tests`
 
 **Test isolation:** `tests/test_api.py` selects a private database in a `tempfile.TemporaryDirectory()` and resets its data between tests. Importer CLI tests use pytest's `tmp_path` and explicitly pass `SPACEPORT_DB` to each subprocess. Neither suite uses the supplied project database; do not point external applications at their temporary databases.
 
-Latest local verification, **November 8, 2026**:
+Latest local candidate verification, **November 18, 2026**:
+
+| Check | Result |
+| --- | --- |
+| Frontend Vitest suite | **172 tests passed across 18 files** |
+| Backend pytest suite | **111 tests passed**, including the OPS-001 code-precedence regression |
+| Formatting / Vite production build / working and staged whitespace | **Passed** |
+| Migration-copy verifier | **Two runs passed**, preserving 5 spacecraft and 2,449 bookings |
+| SQLite checkpoint and recovery copy | Matching schema/records, integrity `ok`, zero foreign-key violations |
+
+These checks use the current local checkout and existing dependency environment. Exact source identity, resolved versions, raw output, and sign-off limits are in the [release record](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.md). No browser, physical-device, fresh-installation, or production-deployment acceptance was rerun during this documentation phase.
+
+Earlier local verification, **November 8, 2026**:
 
 | Check | Result |
 | --- | --- |
@@ -717,11 +764,11 @@ Latest local verification, **November 8, 2026**:
 | Vite production build | **Passed** |
 | Seed import into a fresh temporary database | **5 spacecraft and 3,000 sample bookings imported** |
 
-An existing Starlette TestClient/httpx deprecation warning appears in backend tests. Counts describe this checkout, not a permanent guarantee. Some API tests use 2027/2028 future dates; those fixtures will eventually need advancing as real time passes.
+An existing Starlette TestClient/httpx deprecation warning appears in backend tests. Counts describe their dated checkpoints, not a permanent guarantee. Some API tests use 2027/2028 future dates; those fixtures will eventually need advancing as real time passes.
 
 The **November 8, 2026 documentation/importer update** used the existing Python environment and a new temporary SQLite database, including a second seed import to check duplicate handling. That update reran automated tests, the production build and import checks; it did **not** perform a new browser/performance run, fresh dependency installation or native Windows setup. This caveat applies to that update, not the project's complete verification history. Earlier browser acceptance, a separate 3,000-booking performance audit, and later migration/refueling checks are recorded in the [final acceptance record](#final-acceptance-record)
 
-**Second-commit verification:** After the final API error-handling and migration-verifier edits, rerun the frontend tests, production build, and Prettier check. Record the resulting test count and outcomes here. The backend suite passed 105 tests, migration verification passed twice on a temporary copy preserving 5 spacecraft and 3,047 bookings, and refueling benchmarks passed at 600, 1,200, and 2,400 bookings. The original database was not modified by these verification runs
+**Later November 8 checkpoint:** The backend suite passed 105 tests, migration verification passed twice on a temporary copy preserving 5 spacecraft and 3,047 bookings, and refueling benchmarks passed at 600, 1,200, and 2,400 bookings. The original database was not modified by those verification runs. The former pending second-commit verification note is superseded by the dated November 18 candidate results above; the older counts and benchmark observations remain historical evidence.
 
 Successful import alone does **not** establish UI responsiveness with 3,000 bookings: initial loading, filtering, timeline rendering and booking conflict-query performance must be measured separately. Browser observations from an earlier code/database state do not establish current performance after subsequent edits
 
@@ -745,10 +792,13 @@ Successful import alone does **not** establish UI responsiveness with 3,000 book
 | Cancellation | Mission/buffer release, history retention and immutability, repeated/unknown cancellation, concurrent cancellation, and migration preservation. |
 | Fleet dialog | Tab/Shift+Tab focus containment, Escape dismissal, restored focus, duplicate cancellation protection, pending and failure states, empty timeline date. |
 | API errors/notifications | Structured validation details, non-JSON/invalid JSON/network failures, success/error roles, manual dismissal and notification timeout. |
+| SQLite availability errors | Three locked-read endpoints, read-only booking failure, unrelated operational errors kept at 500, and SQLite error-code precedence over misleading object-name text. |
 | Importer | Historical UTC-normalized/idempotent import, boundary-whitespace variants deduplicated within one import, shared name normalization/length/version policy, transactional rollback on invalid names/times/hours/refueling/FK failures, cancellation-history and refueling-policy preservation. |
 | API shape | Booking/pilot/ship fields and documented creation/error responses in OpenAPI. |
 
 ### Manual browser QA history
+
+**November 18, 2026 accepted local/demo evidence:** The live-service booking/conflict/cancellation gate passed through browser → Vite → protected Uvicorn → disposable SQLite. Phase 7C.2 passed all eight recovery scenarios: Charter/Fleet 503 and manual recovery, rejected booking/cancellation without false success, and one committed booking whose response was deliberately dropped. SQLite and Fleet were inspected before another write; no automatic duplicate booking POST occurred. Recovery scenarios used **608×917** CSS pixels and the lost-response scenario **1280×720**, not a complete device/browser matrix. These are prior accepted runtime observations, not a new browser run for Phase 7D.2. The [release record](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.md) retains the pending device-accessibility checks and cancellation-focus observation.
 
 Earlier UI refinement sessions, including the **November 8, 2026 browser acceptance**, exercised **1440×1000**, **768×1024**, and **390×844** layouts: long names, exact-minute ranges, empty/one/five/sixteen-reservation cards, expansion controls, neutral/invalid/valid custom windows, disabled actions, heading/focus behavior, and document overflow. Controlled clocks covered past/future today, future dates, hours, booking/buffer overlaps, and DST-day operating windows. Temporary database copies were used for submission testing. These sessions precede the later comment/formatting cleanup and database audit.
 
@@ -767,7 +817,21 @@ Suggested manual regression journey:
 
 ## Final acceptance record
 
-**Recorded November 8, 2026 — local development acceptance history.** These observations belong to the code and database states identified below. They are not a new browser run for this README edit or a production-readiness certification.
+### Current scoped acceptance — November 18, 2026
+
+| Gate | Accepted status |
+| --- | --- |
+| Phase 7A — Accessibility | Open: 4/14 checks accepted; 10 device-specific checks inconclusive |
+| Phase 7B — Functional readiness | Passed for local/demo scope; live service and in-process concurrency evidence have distinct scopes |
+| Phase 7C — Operational safety | Passed for local/demo scope; OPS-001 closed and all eight browser-recovery scenarios passed |
+| Phase 7D — Release consolidation | Candidate identified by HEAD plus working-tree manifest; owner sign-off and any release commit/tag remain pending |
+| Production deployment | Not assessed or approved |
+
+The [consolidated release record](docs/releases/LOCAL_DEMO_RELEASE_2026-11-18.md) contains the exact candidate identity, dependency observations, fresh verification, protected startup, recovery/rollback safeguards, and limitations. No application change was made during documentation synchronization.
+
+### Earlier acceptance history — November 8, 2026
+
+These observations belong to the code and database states identified below. They are not a new browser run for this README edit or a production-readiness certification.
 
 ### Earlier acceptance checkpoint — 3,045-booking baseline
 

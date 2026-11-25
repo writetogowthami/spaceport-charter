@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -5,8 +6,9 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from booking_cancellation import migrate_booking_cancellation
@@ -26,6 +28,61 @@ DB = Path(
 )
 
 app = FastAPI(title="Pacific Spaceport Charter API")
+
+logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(sqlite3.OperationalError)
+async def database_operational_error(request: Request, exc: sqlite3.OperationalError):
+    """Translate known database availability failures without masking other SQL errors."""
+    error_name = getattr(exc, "sqlite_errorname", "")
+    message = str(exc).lower()
+    unavailable_codes = {
+        "SQLITE_BUSY",
+        "SQLITE_LOCKED",
+        "SQLITE_READONLY",
+        "SQLITE_CANTOPEN",
+        "SQLITE_IOERR",
+        "SQLITE_FULL",
+    }
+    unavailable_messages = (
+        "database is locked",
+        "database table is locked",
+        "database is busy",
+        "readonly database",
+        "read-only database",
+        "unable to open database file",
+        "disk i/o error",
+        "database or disk is full",
+    )
+    if (
+        error_name in unavailable_codes
+        or any(error_name.startswith(code + "_") for code in unavailable_codes)
+        or (
+            not error_name
+            and any(fragment in message for fragment in unavailable_messages)
+        )
+    ):
+        logger.error(
+            "Database temporarily unavailable on %s %s",
+            request.method,
+            request.url.path,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "Booking service is temporarily unavailable. Please try again."
+            },
+        )
+    logger.error(
+        "Unexpected SQLite operational error on %s %s",
+        request.method,
+        request.url.path,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
 
 app.add_middleware(
     CORSMiddleware,

@@ -430,3 +430,24 @@
   outline-offset: 3px;
   border-radius: 3px;
 }
+
+/* Pilot-name guidance is persistent; errors appear only after field interaction. */
+.pilot-name-hint,
+.pilot-name-error {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pilot-name-hint {
+  color: #526a77;
+}
+
+.pilot-name-error {
+  color: #a02e22;
+  font-weight: 600;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: #a02e22;
+}

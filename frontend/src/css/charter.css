@@ -566,10 +566,19 @@
   transition: opacity 150ms ease;
 }
 
-.launch-info-wrapper:hover .launch-info-tooltip,
-.launch-info-wrapper:focus-within .launch-info-tooltip {
+.launch-info-tooltip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10px;
+  height: 10px;
+}
+
+.launch-info-tooltip.is-open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 @media (max-width: 600px) {
